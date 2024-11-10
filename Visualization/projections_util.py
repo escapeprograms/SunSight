@@ -8,6 +8,8 @@ def create_continued_projection(combined_df, n=1000, metric='carbon_offset_metri
     # print("total, current existing panels:", total_panels)
     panel_percentage = combined_df['existing_installs_count'] / total_panels
     ratiod_carbon_offset_per_panel = np.sum(panel_percentage * combined_df[metric])
+    x = np.arange(n+1) * ratiod_carbon_offset_per_panel
+    print (x.shape)
     return np.arange(n+1) * ratiod_carbon_offset_per_panel
 
 # Greedily adds 1-> n solar panels to zips which maximize the sort_by metric until no more can be added
@@ -23,16 +25,16 @@ def create_greedy_projection(combined_df, n=1000, sort_by='carbon_offset_metric_
         picked = [sorted_combined_df['region_name'][greedy_best_not_filled_index]]
 
     while (i < n):
-        if existing_count >= sorted_combined_df['count_qualified'][greedy_best_not_filled_index]:
+        if existing_count >= sorted_combined_df['count_qualified'][greedy_best_not_filled_index]: # this location is full
             greedy_best_not_filled_index += 1
             existing_count = sorted_combined_df['existing_installs_count'][greedy_best_not_filled_index]
 
         else:
-            projection[i+1] = projection[i] + sorted_combined_df[metric][greedy_best_not_filled_index]
+            projection[i+1] = projection[i] + sorted_combined_df[metric][greedy_best_not_filled_index] #add a new panel to this location
             existing_count += 1
             i += 1
             if record:
-                picked.append(sorted_combined_df['region_name'][greedy_best_not_filled_index])
+                picked.append(sorted_combined_df['region_name'][greedy_best_not_filled_index]) #record every panel location in order
     
     return projection, picked
 
@@ -83,8 +85,8 @@ def create_random_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_pe
 def create_projections(combined_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True):
 
     ## TODO remove rrtest (just for a new version of round robin)
-    if load and exists("Clean_Data/projections_"+metric+".csv") and exists("Clean_Data/projections_picked.csv"):
-        return pd.read_csv("Clean_Data/projections_"+metric+".csv"), pd.read_csv("Clean_Data/projections_picked.csv")
+    # if load and exists("Clean_Data/projections_"+metric+".csv") and exists("Clean_Data/projections_picked.csv"):
+    #     return pd.read_csv("Clean_Data/projections_"+metric+".csv"), pd.read_csv("Clean_Data/projections_picked.csv")
     
     picked = pd.DataFrame()
     proj = pd.DataFrame()
@@ -105,16 +107,19 @@ def create_projections(combined_df, n=1000, load=False, metric='carbon_offset_me
                                                                                                    picked_list=
                                                                                                    [picked['Carbon-Efficient'], picked['Energy-Efficient'], picked['Racial-Equity-Aware'], picked['Income-Equity-Aware']])
 
+    # TESTING
+    # print("Creating Random Projection")
+    # proj['Random'] = create_random_proj(combined_df,n, metric)
     # print("Creating Weighted Greedy Projection")
     # proj['Weighted Greedy'], picked['Weighted Greedy'] = create_weighted_proj(combined_df, n, ['carbon_offset_metric_tons_per_panel', 'yearly_sunlight_kwh_kw_threshold_avg', 'black_prop'], [2,4,1], metric=metric)
 
-    # uniform_samples = 10
+    uniform_samples = 10
 
-    # print("Creating uniform random projection with", uniform_samples, "samples")
+    print("Creating uniform random projection with", uniform_samples, "samples")
 
-    # proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] = np.zeros(n+1)
-    # for i in range(uniform_samples):
-    #     proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] += create_random_proj(combined_df, n)/uniform_samples
+    proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] = np.zeros(n+1)
+    for i in range(uniform_samples):
+        proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] += create_random_proj(combined_df, n)/uniform_samples
     
     ## TODO remove rrtest (just for a new version of round robin)
     if save:

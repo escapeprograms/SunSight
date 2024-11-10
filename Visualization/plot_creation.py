@@ -87,7 +87,7 @@ annotate = False
 # bar_plot_demo_split(state_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop", "Republican_prop"], xticks=['Black', 'White', 'Asian', 'Income', 'Republican'], key="existing_installs_count_per_capita", type="percent", stacked=True, ylabel="Existing Installs Per Capita (% Avg)", title="", hatches=['o','o','o','o','o','x','x','x','x','x'], annotate=annotate,  legend=False)
 
 # bar_plot_demo_split(state_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop", "Republican_prop"], xticks=['Black', 'White', 'Asian', 'Income', 'Republican'], key="carbon_offset_kg_per_panel", type="paper", stacked=False, ylabel="Carbon Offset Potential (x average)", title="", hatches=['o','o','o','o','o','x','x','x','x','x'], annotate=annotate)
-# bar_plot_demo_split(state_df, demos=["black_prop", "white_prop","Median_income", "asian_prop", "Republican_prop"], key="realized_potential_percent", xticks=['Black', 'White', 'Asian','Income','Republican'] , type="paper", stacked=False, ylabel="Realized Potential (x average)", title="", hatches=['o','o','o','o','o','x','x','x','x','x'], annotate=annotate, legend=True)
+# bar_plot_demo_split(state_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop", "Republican_prop"], key="realized_potential_percent", xticks=['Black', 'White', 'Asian','Income','Republican'] , type="paper", stacked=False, ylabel="Realized Potential (x average)", title="", hatches=['o','o','o','o','o','x','x','x','x','x'], annotate=annotate, legend=True)
 # bar_plot_demo_split(state_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop", "Republican_prop"], xticks=['Black', 'White', 'Asian', 'Income', 'Republican'], key="existing_installs_count_per_capita", type="paper", stacked=False, ylabel="Existing Installs Per Capita", title="", hatches=['o','o','o','o','o','x','x','x','x','x'], annotate=annotate,  legend=False)
 
 # hatches = None
@@ -96,6 +96,10 @@ annotate = False
 # bar_plot_demo_split(combined_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop"], xticks=['Black', 'White', 'Asian', 'Income'], key="carbon_offset_kg_per_panel", type="percent", stacked=True, ylabel="Carbon Offset Potential (kg / Panel)", title="", hatches=hatches, annotate=annotate)
 # bar_plot_demo_split(combined_df, demos=["black_prop", "white_prop","Median_income", "asian_prop"], key="realized_potential_percent", xticks=['Black', 'White', 'Asian','Income'] , type="percent", stacked=True, ylabel="Realized Potential (%)", title="", hatches=hatches, annotate=annotate, legend=False)
 # bar_plot_demo_split(combined_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop"], xticks=['Black', 'White', 'Asian', 'Income'], key="existing_installs_count_per_capita", type="percent", stacked=True, ylabel="Existing Installs Per Capita", title="", hatches=hatches, annotate=annotate,  legend=False)
+
+#existing install count
+bar_plot_demo_split(state_df, demos=["black_prop", "white_prop","Median_income", "asian_prop"], key="existing_installs_count", xticks=['Black', 'White', 'Asian','Income'] , type="none", stacked=False, ylabel="Existing Panels", title="", hatches=hatches, annotate=annotate, legend=False)
+bar_plot_demo_split(combined_df, demos=["black_prop", "white_prop","Median_income", "asian_prop"], key="existing_installs_count", xticks=['Black', 'White', 'Asian','Income'] , type="none", stacked=False, ylabel="Existing Panels", title="", hatches=hatches, annotate=annotate, legend=False)
 
 # quit()
 
