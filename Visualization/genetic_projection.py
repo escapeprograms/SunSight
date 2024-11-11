@@ -26,7 +26,7 @@ def create_genetic_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_p
 
 
 # Model
-res = train(combined_df, num_panels=2, num_models=8, generations=4, survivor_fraction=0.5)
+res = train(combined_df, num_panels=10, num_models=100, generations=10, survivor_fraction=0.2)
 
 torch.save(res.state_dict(), 'model.pth')
 

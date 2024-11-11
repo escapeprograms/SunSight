@@ -48,7 +48,7 @@ def mutate(model, mutation_rate = 0.1, noise_magnitude = 0.1):
 def propogate_model(model, df, num_children):
     children = []
     for i in range(num_children):
-        child_model = Predictor(2, 100, df.shape[0]) #TODO: load a model w/ same params
+        child_model = Predictor(2, 10, df.shape[0]) #TODO: load a model w/ same params
         child_model.load_state_dict(model.state_dict())
         #mutate all models except first model
         if i != 0:
@@ -88,7 +88,7 @@ def train_generation(models, df, num_panels, survivor_fraction=0.1):
 
 #train over many generations
 def train(df, num_panels=1000, num_models=100, generations=200, survivor_fraction = 0.1):
-    models = [Predictor(2, 100, df.shape[0]) for i in range(num_models)]
+    models = [Predictor(2, 10, df.shape[0]) for i in range(num_models)]
     for i in range(generations):
         print("Starting generation",i)
         survivors = train_generation(models, df, num_panels, survivor_fraction=survivor_fraction)
