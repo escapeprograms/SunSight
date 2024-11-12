@@ -2,7 +2,7 @@ from math import floor
 from torch import nn
 import torch
 
-from evaluation_util import *
+from Neat.evaluation_util import *
 
 
 # Idea 1:
