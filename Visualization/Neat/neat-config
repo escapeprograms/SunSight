@@ -50,11 +50,11 @@ node_delete_prob        = 0.2
 # network parameters
 num_hidden              = 0
 
-#one input for each state
-num_inputs              = 51
+#multiple inputs
+num_inputs              = 7
 
-#one output for each zip code 7794
-num_outputs             = 51
+#one output: the evaluation of the zip code
+num_outputs             = 1
 
 # node response options
 response_init_mean      = 1.0

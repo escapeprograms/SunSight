@@ -1,5 +1,7 @@
 import math
 import numpy as np
+import pickle
+import neat
 import torch
 from plot_util import *
 from data_load_util import *
@@ -11,9 +13,22 @@ from Neat.evaluation_util import *
 # try with combined_df and state_df; may get different/interesting results
 combined_df = make_dataset(remove_outliers=True)
 state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
-print(state_df['existing_installs_count'])
-# print("number of states", len(state_df['State']))
-# print("number of zips", len(combined_df['region_name']))
+
+data_manager = DataManager(combined_df, state_df)
+
+with open('Neat/models/NEAT_model.pkl', 'rb') as f:
+    winner = pickle.load(f)
+
+zip_outputs = []
+for i in range(0, data_manager.num_zips):
+    score = winner.activate(data_manager.network_inputs(i))
+    zip_outputs.append((i, score))
+
+zip_outputs.sort(key=lambda z: z[1], reverse=True) #sort by highest score
+zip_order = [index for index, score in zip_outputs]
+
+carbs = data_manager.greedy_projection(zip_order)
+print(carbs)
 '''
 State Columns
 ['State', 'State code', 'Clean', 'Bioenergy', 'Coal', 'Gas', 'Fossil',
@@ -34,7 +49,6 @@ State Columns
        'realized_potential_percent', 'carbon_offset_kg_per_panel']
 
 '''
-# print(combined_df.columns)
 '''
 Zip Columns
 ['region_name', 'state_name', 'yearly_sunlight_kwh_kw_threshold_avg',
@@ -53,15 +67,15 @@ Zip Columns
        'asian_prop', 'white_prop', 'black_prop', 'percent_below_poverty_line']
 '''
 
-def create_genetic_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_per_panel'):
-    projection = np.zeros(n+1)
-    picks = np.random.randint(0, len(combined_df['region_name']) -1, (n))
-    for i, pick in enumerate(picks):
-        while math.isnan(combined_df[metric][pick]):
-            pick = np.random.randint(0, len(combined_df[metric]))
-        projection[i+1] = projection[i] + combined_df[metric][pick]
+# def create_genetic_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_per_panel'):
+#     projection = np.zeros(n+1)
+#     picks = np.random.randint(0, len(combined_df['region_name']) -1, (n))
+#     for i, pick in enumerate(picks):
+#         while math.isnan(combined_df[metric][pick]):
+#             pick = np.random.randint(0, len(combined_df[metric]))
+#         projection[i+1] = projection[i] + combined_df[metric][pick]
 
-    return projection
+#     return projection
 
 
 # Model
