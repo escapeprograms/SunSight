@@ -1,3 +1,5 @@
+import pickle
+from Neat.evaluation_util import DataManager
 from data_load_util import *
 
 
@@ -62,6 +64,50 @@ def create_weighted_proj(combined_df, n=1000, objectives=['carbon_offset_metric_
 
     return create_greedy_projection(combined_df=new_df, n=n, sort_by='weighted_combo_metric', metric=metric)
 
+#NEAT projection
+def create_neat_projection(combined_df, state_df, n=1000, metric='carbon_offset_metric_tons_per_panel', model_path='Neat/models/NEAT_model.pkl', record=True):
+    #run the trained NN from model path
+    data_manager = DataManager(combined_df, state_df)
+
+    with open(model_path, 'rb') as f:
+        winner = pickle.load(f)
+
+    zip_outputs = []
+    for i in range(0, data_manager.num_zips):
+        score = winner.activate(data_manager.network_inputs(i))
+        zip_outputs.append((i, score))
+
+    zip_outputs.sort(key=lambda z: z[1], reverse=True) #sort zip codes by highest score
+    zip_order = [index for index, score in zip_outputs]
+
+    #project using original data
+    projection = np.zeros(n+1)
+    ordered_index = 0
+    greedy_index = zip_order[ordered_index]
+    existing_count = combined_df['existing_installs_count'][greedy_index]
+    i = 0 #panel counter
+
+    picked = []
+    if record:
+        picked = [combined_df['region_name'][greedy_index]]
+
+    while (i < n):
+        if existing_count >= combined_df['count_qualified'][greedy_index]: # this location is full
+            ordered_index += 1
+            greedy_index = zip_order[ordered_index]
+
+            existing_count = combined_df['existing_installs_count'][greedy_index]
+
+        else:
+            projection[i+1] = projection[i] + combined_df[metric][greedy_index] #add a new panel to this location
+            existing_count += 1
+            i += 1
+            if record:
+                picked.append(combined_df['region_name'][greedy_index]) #record every panel location in order
+    
+    return projection, picked
+
+
 # Creates a projection of the carbon offset if we place panels to normalize the panel utilization along the given "demographic"
 # I.e. if we no correlation between the demographic and the panel utilization and only fous on that, how Carbon would we offset
 # TODO
@@ -82,11 +128,11 @@ def create_random_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_pe
     return projection
 
 # Creates multiple different projections and returns them
-def create_projections(combined_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True):
+def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True):
 
     ## TODO remove rrtest (just for a new version of round robin)
-    # if load and exists("Clean_Data/projections_"+metric+".csv") and exists("Clean_Data/projections_picked.csv"):
-    #     return pd.read_csv("Clean_Data/projections_"+metric+".csv"), pd.read_csv("Clean_Data/projections_picked.csv")
+    if load and exists("Clean_Data/projections_"+metric+".csv") and exists("Clean_Data/projections_picked.csv"):
+        return pd.read_csv("Clean_Data/projections_"+metric+".csv"), pd.read_csv("Clean_Data/projections_picked.csv")
     
     picked = pd.DataFrame()
     proj = pd.DataFrame()
@@ -107,19 +153,22 @@ def create_projections(combined_df, n=1000, load=False, metric='carbon_offset_me
                                                                                                    picked_list=
                                                                                                    [picked['Carbon-Efficient'], picked['Energy-Efficient'], picked['Racial-Equity-Aware'], picked['Income-Equity-Aware']])
 
+    print("Creating NEAT Projection")
+    proj['NEAT-Evaluation'], picked['NEAT-Evaluation'] = create_neat_projection(combined_df, state_df, n, metric=metric)
+
     # TESTING
     # print("Creating Random Projection")
     # proj['Random'] = create_random_proj(combined_df,n, metric)
     # print("Creating Weighted Greedy Projection")
     # proj['Weighted Greedy'], picked['Weighted Greedy'] = create_weighted_proj(combined_df, n, ['carbon_offset_metric_tons_per_panel', 'yearly_sunlight_kwh_kw_threshold_avg', 'black_prop'], [2,4,1], metric=metric)
 
-    uniform_samples = 10
+    # uniform_samples = 10
 
-    print("Creating uniform random projection with", uniform_samples, "samples")
+    # print("Creating uniform random projection with", uniform_samples, "samples")
 
-    proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] = np.zeros(n+1)
-    for i in range(uniform_samples):
-        proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] += create_random_proj(combined_df, n)/uniform_samples
+    # proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] = np.zeros(n+1)
+    # for i in range(uniform_samples):
+    #     proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] += create_random_proj(combined_df, n)/uniform_samples
     
     ## TODO remove rrtest (just for a new version of round robin)
     if save:

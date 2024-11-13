@@ -106,15 +106,14 @@ class DataManager:
         return projection, picked
     
     #TODO: calculate score with lexicase
-    def score(self, zip_order, n=1000, record=False):
-        #mode = np.floor(np.random.rand() * 5)
-        mode = 3
-        if mode == 0: # judge based on racial equity
-            return self.score_racial_equity(zip_order, n)
-        elif mode == 1: # judge based on income equity
-            return self.score_income_equity(zip_order, n)
-        elif mode == 2: # judge based on geographic equity
+    def score(self, zip_order, mode = 0, n = 1000, record=False):
+        # mode = 3
+        if mode == 0: # judge based on geographic equity
             return self.score_geographic_equity(zip_order, n)
+        elif mode == 1: # judge based on racial equity
+            return self.score_racial_equity(zip_order, n)
+        elif mode == 2: # judge based on income equity
+            return self.score_income_equity(zip_order, n)
         elif mode == 3: # judge based on carbon offset
             return self.score_carbon_offset(zip_order, n)
         elif mode == 4: # judge based on energy generation
@@ -129,7 +128,7 @@ class DataManager:
         return score[-1]
     
     def score_geographic_equity(self, zip_order, n=1000):
-        #TODO: maybe check standard deviation in long/lat
+        #TODO: 
         score, _ = [0]
         return score[-1]
 

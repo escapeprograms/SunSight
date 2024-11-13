@@ -4,9 +4,11 @@ from projections_util import *
 from tqdm import tqdm
 
 combined_df = make_dataset(remove_outliers=True)
+state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
+
 max_num_added = 1850000
-Energy_projections, Energy_picked = create_projections(combined_df, n=max_num_added, load=True, metric='energy_generation_per_panel')
-Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, n=max_num_added, load=True, metric='carbon_offset_kg_per_panel')
+Energy_projections, Energy_picked = create_projections(combined_df, state_df, n=max_num_added, load=True, metric='energy_generation_per_panel')
+Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, state_df, n=max_num_added, load=True, metric='carbon_offset_kg_per_panel')
 
 panel_estimations_by_year = [("Net-Zero" , 479000 * 3), ("  2030  ", 479000 * 1), ("  2034  ", 479000 * 2)]
  
@@ -45,7 +47,9 @@ def plot_projections(projections, panel_estimations=None, net_zero_horizontal=Fa
 
     print("percent difference between continued and Carbon-efficient:", projections['Round Robin'].values[-1] / projections['Carbon-Efficient'].values[-1] )
     print("percent difference between continued and racially-aware:", projections['Racial-Equity-Aware'].values[-1] / projections['Status-Quo'].values[-1])
-    
+    print("percent difference between continued and NEAT-Evaluation:", projections['NEAT-Evaluation'].values[-1] / projections['Carbon-Efficient'].values[-1] )
+
+
     for i, elem in enumerate(projections['Round Robin'].values):
         if elem > two_mill_continued:
             print("number of panels for net zero round robin:", i)
@@ -127,8 +131,8 @@ def plot_demo_state_stats(new_df,save="Clean_Data/data_by_state_proj.csv"):
     bar_plot_demo_split(new_df, demos=["black_prop", "white_prop","Median_income", "asian_prop"], key="carbon_offset_kg", xticks=['Black', 'White', 'Asian','Income'] , type=type, stacked=stacked, ylabel="Potential Carbon Offset (x Avg)", title="", hatches=hatches, annotate=annotate, legend=True)
     bar_plot_demo_split(new_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop"], xticks=['Black', 'White', 'Asian', 'Income'], key="existing_installs_count_per_capita", type=type, stacked=stacked, ylabel="Existing Installs Per Capita (x Avg)", title="", hatches=hatches, annotate=annotate,  legend=True)
 
-plot_projections(Carbon_offset_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon-Efficient', ylabel="Carbon Offset (kg)")
-# plot_projections(Energy_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Energy-Efficient', ylabel="Additional Energy Capacity (kWh)")
+# plot_projections(Carbon_offset_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon-Efficient', ylabel="Carbon Offset (kg)")
+plot_projections(Energy_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Energy-Efficient', ylabel="Additional Energy Capacity (kWh)")
 
 # print(Energy_picked[''])
 
