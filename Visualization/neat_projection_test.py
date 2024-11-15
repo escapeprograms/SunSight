@@ -7,7 +7,6 @@ import torch
 from plot_util import *
 from data_load_util import *
 from projections_util import *
-from genetic_model import *
 from Neat.evaluation_util import *
 
 
