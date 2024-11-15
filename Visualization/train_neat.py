@@ -8,36 +8,65 @@ import numpy as np
 from Neat.evaluation_util import DataManager
 from data_load_util import load_state_data, make_dataset
 from tqdm import tqdm
+import random
 
 #constants
 NUM_PANELS = 100000
-NUM_GENERATIONS = 150
+NUM_GENERATIONS = 10
+EVALUATION_METRICS = ['carbon_offset','energy_generation'] #lexicase metrics to evaluate
+OVERALL_THRESHOLD = 0.1 #what fraction of TOTAL population reproduces, makes sure this matches 'survival_threshold' in neat-config
 
+step_threshold = OVERALL_THRESHOLD ** (1/len(EVALUATION_METRICS)) #calculate what fraction survives after each metric is applied sequentially
 best_scores = []
-#evaluate a simulation
+
+#run a simulation
+def run_genome(genome, config, data_manager):
+    net = neat.nn.FeedForwardNetwork.create(genome, config)
+    zip_outputs = []
+    
+    for i in range(0, data_manager.num_zips):
+        score = net.activate(data_manager.network_inputs(i))
+        zip_outputs.append((i, score))
+    zip_outputs.sort(key=lambda z: z[1], reverse=True) #sort by highest score
+    zip_order = [index for index, score in zip_outputs]
+    return zip_order
+
+
+#scoring function
 def eval_genomes(genomes, config):
-    # eval_mode = np.floor(np.random.rand() * 4) + 1 #randomly select an evaluation mode from [1,4] (0 is geo which is not implemented)
-    eval_mode = 2
-
+    best_score = float('-inf') #record best score
+    
+    #get zip orders for all genomes by running each NN once
+    genome_info = [] #stores genome, zip_order, and ranking data
     for genome_id, genome in tqdm(genomes):
-        net = neat.nn.FeedForwardNetwork.create(genome, config)
-        zip_outputs = []
-        best_score = 0
-        for i in range(0, data_manager.num_zips):
-            score = net.activate(data_manager.network_inputs(i))
-            zip_outputs.append((i, score))
-        zip_outputs.sort(key=lambda z: z[1], reverse=True) #sort by highest score
-        zip_order = [index for index, score in zip_outputs]
+        genome.fitness = float('-inf') #set all fitness to a minimum initially
+        zip_order = run_genome(genome, config, data_manager)
+        genome_info.append([genome, zip_order, 0])
 
-        #add panels greedily and score the model's ranking
-        genome.fitness = data_manager.score(zip_order, eval_mode, NUM_PANELS)
+    #lexicase: evaluate based on all metrics in random order
+    shuffled_metrics = EVALUATION_METRICS.copy()
+    random.shuffle(shuffled_metrics)
+    for eval_metric in shuffled_metrics:
+        #score each genome's zip order based on eval_metric and sort the list by it
+        genome_info.sort(key = lambda info: data_manager.score(info[1], eval_metric, NUM_PANELS), reverse=True)
         
+        #naturally select the genome list by the step_threshold
+        genome_info = genome_info[0:np.ceil(step_threshold * len(genome_info)).astype(int)]
+
+        #update ranking data for tiebreakers, a number closer to 0 is better
+        for i in range(len(genome_info)):
+            genome_info[i][2] -= i
+        
+    #set tie-breaker fitness for final survivors
+    for genome, zip_order, ranking in genome_info:
+        genome.fitness = ranking
+
         #find the best performing score
         if genome.fitness > best_score:
             best_score = genome.fitness
 
     #mark the score of the best generation
-    best_scores.append((eval_mode, best_score))
+    best_scores.append(best_score) #EVAL MODE UNDER CONSTRUCITON, fix all visualization tools
 
 def run(config_file, checkpoint=0):
     print("loading configuration...")
@@ -59,7 +88,7 @@ def run(config_file, checkpoint=0):
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
-    p.add_reporter(neat.Checkpointer(5, filename_prefix='Neat/checkpoints/neat-checkpoint-'))
+    p.add_reporter(neat.Checkpointer(time_interval_seconds=1200, filename_prefix='Neat/checkpoints/neat-checkpoint-'))
 
     # Run for up to 300 generations.
     print("training model...")

@@ -44,6 +44,7 @@ def get_demo_split(df, demos, key, type="avg value"):
 class DataManager:
     def __init__(self, combined_df, state_df,
                  fields=['Republican_prop', 'Median_income', 'carbon_offset_kg_per_panel', 'energy_generation_per_panel', 'realized_potential_percent', 'black_prop']):
+        #Note: remove Republican_prop
         #fields needs to consider energy efficiency, equity, and carbon efficiency
         self.combined_df = combined_df
         self.state_df = state_df
@@ -105,30 +106,33 @@ class DataManager:
         
         return projection, picked
     
-    #TODO: calculate score with lexicase
+    #TODO: FIX THE METRICS
     def score(self, zip_order, mode = 0, n = 1000, record=False):
         # mode = 3
-        if mode == 0: # judge based on geographic equity
+        #TODO: lexicase on 2 objectives: score carbon offset and score energy generation
+        if mode == "geographic_equity": # judge based on geographic equity
             return self.score_geographic_equity(zip_order, n)
-        elif mode == 1: # judge based on racial equity
+        elif mode == "racial_equity": # judge based on racial equity
             return self.score_racial_equity(zip_order, n)
-        elif mode == 2: # judge based on income equity
+        elif mode == "income_equity": # judge based on income equity
             return self.score_income_equity(zip_order, n)
-        elif mode == 3: # judge based on carbon offset
+        elif mode == "carbon_offset": # judge based on carbon offset
             return self.score_carbon_offset(zip_order, n)
-        elif mode == 4: # judge based on energy generation
+        elif mode == "energy_generation": # judge based on energy generation
             return self.score_energy_generation(zip_order, n)
     
     def score_racial_equity(self, zip_order, n=1000):
+        #TODO: find a better way to do this
         score, _ = self.greedy_projection(zip_order, 'black_prop', n)
         return score[-1]
 
     def score_income_equity(self, zip_order, n=1000):
+        #TODO: Make this actually score equity
         score, _ = self.greedy_projection(zip_order, 'Median_income', n)
         return score[-1]
     
     def score_geographic_equity(self, zip_order, n=1000):
-        #TODO: 
+        #TODO: IMPLEMENT THIS METRIC
         score, _ = [0]
         return score[-1]
 
