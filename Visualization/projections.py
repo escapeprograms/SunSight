@@ -47,7 +47,7 @@ def plot_projections(projections, panel_estimations=None, net_zero_horizontal=Fa
 
     print("percent difference between continued and Carbon-efficient:", projections['Round Robin'].values[-1] / projections['Carbon-Efficient'].values[-1] )
     print("percent difference between continued and racially-aware:", projections['Racial-Equity-Aware'].values[-1] / projections['Status-Quo'].values[-1])
-    print("percent difference between continued and NEAT-Evaluation:", projections['NEAT-Evaluation'].values[-1] / projections['Carbon-Efficient'].values[-1] )
+    print("percent difference between continued and NEAT-Evaluation:", projections['NEAT-Evaluation'].values[-1] / projections['Status-Quo'].values[-1] )
 
 
     for i, elem in enumerate(projections['Round Robin'].values):
@@ -139,6 +139,9 @@ plot_projections(Energy_projections, panel_estimations_by_year, net_zero_horizon
 # for key in ['Energy-Efficient', 'Carbon-Efficient', 'Racial-Equity-Aware', 'Income-Equity-Aware', 'Round Robin']:
 #     plot_picked(combined_df, Energy_picked[key], None, title="")
 
+#print NEAT picks
+print(Energy_picked['NEAT-Evaluation'].head())
+plot_picked(combined_df, Energy_picked['NEAT-Evaluation'], None, title="")
 quit()
 
 def weighted_proj_heatmap(combined_df, metric='carbon_offset_kg_per_panel', objectives=['carbon_offset_kg_per_panel', 'energy_generation_per_panel', 'black_prop']):

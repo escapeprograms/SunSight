@@ -31,8 +31,13 @@ def run_genome(genome, config, data_manager):
     zip_order = [index for index, score in zip_outputs]
     return zip_order
 
+#score a simulation and record the cumulative score across all metrics
+def score_order(info, eval_metric):
+    score = data_manager.score(info[1], eval_metric, NUM_PANELS)
+    info[2] += score
+    return score
 
-#scoring function
+#scoring function for all genomes
 def eval_genomes(genomes, config):
     best_score = float('-inf') #record best score
     
@@ -48,25 +53,26 @@ def eval_genomes(genomes, config):
     random.shuffle(shuffled_metrics)
     for eval_metric in shuffled_metrics:
         #score each genome's zip order based on eval_metric and sort the list by it
-        genome_info.sort(key = lambda info: data_manager.score(info[1], eval_metric, NUM_PANELS), reverse=True)
+        # genome_info.sort(key = lambda info: data_manager.score(info[1], eval_metric, NUM_PANELS), reverse=True)
+        genome_info.sort(key = lambda info: score_order(info, eval_metric), reverse=True)
         
         #naturally select the genome list by the step_threshold
         genome_info = genome_info[0:np.ceil(step_threshold * len(genome_info)).astype(int)]
 
-        #update ranking data for tiebreakers, a number closer to 0 is better
-        for i in range(len(genome_info)):
-            genome_info[i][2] -= i
+        #update ranking data for tiebreakers, a number closer to 0 is better (deprecated)
+        # for i in range(len(genome_info)):
+        #     genome_info[i][2] -= i
         
     #set tie-breaker fitness for final survivors
-    for genome, zip_order, ranking in genome_info:
-        genome.fitness = ranking
+    for genome, zip_order, score in genome_info:
+        genome.fitness = score #note: this score can go up to NUM_PANELS * len(EVALUATION_METRICS)
 
-        #find the best performing score
+        #find the best performing score in this generation
         if genome.fitness > best_score:
             best_score = genome.fitness
 
-    #mark the score of the best generation
-    best_scores.append(best_score) #EVAL MODE UNDER CONSTRUCITON, fix all visualization tools
+    #mark the best score of this generation
+    best_scores.append(best_score)
 
 def run(config_file, checkpoint=0):
     print("loading configuration...")
