@@ -1,3 +1,4 @@
+from collections import Counter
 import numpy as np
 import pandas as pd
 
@@ -13,6 +14,10 @@ class DataManager:
         self.num_zips = len(self.combined_df)
         self.fields = fields
         self.synthesize_df()
+
+
+        #save percentile thresholds
+        self.racial_thresholds = None
 
     def synthesize_df(self): #create a full df per zip code
         #change the Washington, D.C. key in state_df to be compatible with combined_df
@@ -83,10 +88,31 @@ class DataManager:
         elif mode == "energy_generation": # judge based on energy generation
             return self.score_energy_generation(zip_order, n)
     
-    def score_racial_equity(self, zip_order, n=1000):
-        #TODO: find a better way to do this
-        score, _ = self.greedy_projection(zip_order, 'black_prop', n)
-        return score[-1]
+    def score_racial_equity(self, zip_order, n=1000, k=2):
+        _, picked = self.greedy_projection(zip_order, 'black_prop', n, record=True)
+
+        #get bucket thresholds for percentiles
+        if not isinstance(self.racial_thresholds, np.ndarray):
+            #only calculate these once; note: k CANNOT change once this is set
+            q = np.linspace(0, 1, k+1)
+            self.racial_thresholds = self.combined_df['black_prop'].quantile(q).to_numpy()
+        else:
+            k = len(self.racial_thresholds) - 1
+        buckets = [0 for i in range(k)]
+
+        #count panels in each bucket
+        unique_picked = Counter(picked)
+        for zip_code in unique_picked:
+            bucket = 0
+            p = self.combined_df.loc[self.combined_df['region_name'] == zip_code]
+            for i in range(len(self.racial_thresholds)):
+                if p.iloc[0]['black_prop'] > self.racial_thresholds[i]:
+                    bucket = i
+            buckets[bucket] += unique_picked[zip_code]
+
+        #get "error": squared relative difference from a uniform distribution
+        errors = np.array([(bucket - n/k)/(n/k) for bucket in buckets])
+        return 1 - (np.sum(errors**2)/k) #normalized to [0,1]
 
     def score_income_equity(self, zip_order, n=1000):
         #TODO: Make this actually score equity
@@ -100,9 +126,9 @@ class DataManager:
 
     def score_carbon_offset(self, zip_order, n=1000):
         score, _ = self.greedy_projection(zip_order, 'carbon_offset_kg_per_panel', n)
-        return score[-1]
+        return score[-1]/n #normalize [0, 1]
 
     def score_energy_generation(self, zip_order, n=1000):
         score, _ = self.greedy_projection(zip_order, 'energy_generation_per_panel', n)
-        return score[-1]
+        return score[-1]/n #normalize [0, 1]
     
