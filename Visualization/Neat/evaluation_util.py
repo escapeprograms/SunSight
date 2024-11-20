@@ -18,6 +18,7 @@ class DataManager:
 
         #save percentile thresholds
         self.racial_thresholds = None
+        self.income_thresholds = None
 
     def synthesize_df(self): #create a full df per zip code
         #change the Washington, D.C. key in state_df to be compatible with combined_df
@@ -46,7 +47,7 @@ class DataManager:
         return inputs
     
     #greedily project based on an arbitrary order
-    def greedy_projection(self, zip_order, metric='carbon_offset_metric_tons_per_panel', n=1000, record=False):
+    def greedy_projection_accumulator(self, zip_order, metric='carbon_offset_metric_tons_per_panel', n=1000, record=False):
         projection = np.zeros(n+1)
         ordered_index = 0
         greedy_index = zip_order[ordered_index]
@@ -65,7 +66,9 @@ class DataManager:
                 existing_count = self.combined_df['existing_installs_count'][greedy_index]
 
             else:
-                projection[i+1] = projection[i] + self.combined_df[metric][greedy_index] #add a new panel to this location
+                projection[i+1] = projection[i] + self.combined_df[metric][greedy_index] #update accumulator
+                
+                #add a new panel to this location
                 existing_count += 1
                 i += 1
                 if record:
@@ -73,10 +76,44 @@ class DataManager:
         
         return projection, picked
     
+    def greedy_projection_bucket(self, zip_order, metric='carbon_offset_metric_tons_per_panel', n=1000, record=False, thresholds=[]):
+        # projection = np.zeros(n+1)
+        ordered_index = 0
+        greedy_index = zip_order[ordered_index]
+        existing_count = self.combined_df['existing_installs_count'][greedy_index]
+        i = 0 #panel counter
+        bucket = 0 #bucket index
+        buckets = [0 for i in range(len(thresholds)-1)]
+
+        picked = []
+        if record:
+            picked = [self.combined_df['region_name'][greedy_index]]
+
+        while (i < n):
+            if existing_count >= self.combined_df['count_qualified'][greedy_index]: # this location is full
+                ordered_index += 1
+                greedy_index = zip_order[ordered_index]
+
+                existing_count = self.combined_df['existing_installs_count'][greedy_index]
+
+                #set the bucket to add to
+                value = self.combined_df[metric][greedy_index]
+
+                for j in range(len(thresholds)):
+                    if value > thresholds[j]:
+                        bucket = j
+            else:
+                existing_count += 1
+                i += 1
+                buckets[bucket] += 1
+                
+                if record:
+                    picked.append(self.combined_df['region_name'][greedy_index]) #record every panel location in order
+        
+        return buckets, picked
+    
     #TODO: FIX THE METRICS
-    def score(self, zip_order, mode = 0, n = 1000, record=False):
-        # mode = 3
-        #TODO: lexicase on 2 objectives: score carbon offset and score energy generation
+    def score(self, zip_order, mode = "energy_generation", n = 1000, record=False):
         if mode == "geographic_equity": # judge based on geographic equity
             return self.score_geographic_equity(zip_order, n)
         elif mode == "racial_equity": # judge based on racial equity
@@ -89,8 +126,6 @@ class DataManager:
             return self.score_energy_generation(zip_order, n)
     
     def score_racial_equity(self, zip_order, n=1000, k=2):
-        _, picked = self.greedy_projection(zip_order, 'black_prop', n, record=True)
-
         #get bucket thresholds for percentiles
         if not isinstance(self.racial_thresholds, np.ndarray):
             #only calculate these once; note: k CANNOT change once this is set
@@ -98,26 +133,29 @@ class DataManager:
             self.racial_thresholds = self.combined_df['black_prop'].quantile(q).to_numpy()
         else:
             k = len(self.racial_thresholds) - 1
-        buckets = [0 for i in range(k)]
 
-        #count panels in each bucket
-        unique_picked = Counter(picked)
-        for zip_code in unique_picked:
-            bucket = 0
-            p = self.combined_df.loc[self.combined_df['region_name'] == zip_code]
-            for i in range(len(self.racial_thresholds)):
-                if p.iloc[0]['black_prop'] > self.racial_thresholds[i]:
-                    bucket = i
-            buckets[bucket] += unique_picked[zip_code]
+        buckets, _ = self.greedy_projection_bucket(zip_order, 'black_prop', n, thresholds=self.racial_thresholds)
 
         #get "error": squared relative difference from a uniform distribution
         errors = np.array([(bucket - n/k)/(n/k) for bucket in buckets])
-        return 1 - (np.sum(errors**2)/k) #normalized to [0,1]
 
-    def score_income_equity(self, zip_order, n=1000):
-        #TODO: Make this actually score equity
-        score, _ = self.greedy_projection(zip_order, 'Median_income', n)
-        return score[-1]
+        return 1 - (np.sum(errors**2)/k) #take the negative sum of squared error, normalized to [0,1]
+
+    def score_income_equity(self, zip_order, n=1000, k=2):
+        #get bucket thresholds for percentiles
+        if not isinstance(self.income_thresholds, np.ndarray):
+            #only calculate these once; note: k CANNOT change once this is set
+            q = np.linspace(0, 1, k+1)
+            self.income_thresholds = self.combined_df['Median_income'].quantile(q).to_numpy()
+        else:
+            k = len(self.income_thresholds) - 1
+
+        buckets, _ = self.greedy_projection_bucket(zip_order, 'Median_income', n, thresholds=self.income_thresholds)
+
+        #get "error": squared relative difference from a uniform distribution
+        errors = np.array([(bucket - n/k)/(n/k) for bucket in buckets])
+
+        return 1 - (np.sum(errors**2)/k) #take the negative sum of squared error, normalized to [0,1]
     
     def score_geographic_equity(self, zip_order, n=1000):
         #TODO: IMPLEMENT THIS METRIC
@@ -125,10 +163,10 @@ class DataManager:
         return score[-1]
 
     def score_carbon_offset(self, zip_order, n=1000):
-        score, _ = self.greedy_projection(zip_order, 'carbon_offset_kg_per_panel', n)
+        score, _ = self.greedy_projection_accumulator(zip_order, 'carbon_offset_kg_per_panel', n)
         return score[-1]/n #normalize [0, 1]
 
     def score_energy_generation(self, zip_order, n=1000):
-        score, _ = self.greedy_projection(zip_order, 'energy_generation_per_panel', n)
+        score, _ = self.greedy_projection_accumulator(zip_order, 'energy_generation_per_panel', n)
         return score[-1]/n #normalize [0, 1]
     

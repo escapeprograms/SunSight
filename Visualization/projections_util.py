@@ -128,8 +128,7 @@ def create_random_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_pe
     return projection
 
 # Creates multiple different projections and returns them
-def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True):
-    model_path = "Neat/models/11-15-24/NEAT_model1.pkl"
+def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, model_path=""):
     ## TODO remove rrtest (just for a new version of round robin)
     if load and exists("Clean_Data/projections_"+metric+".csv") and exists("Clean_Data/projections_picked.csv"):
         return pd.read_csv("Clean_Data/projections_"+metric+".csv"), pd.read_csv("Clean_Data/projections_picked.csv")

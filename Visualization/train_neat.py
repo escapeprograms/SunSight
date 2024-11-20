@@ -12,9 +12,9 @@ import random
 
 #constants
 NUM_PANELS = 100000
-NUM_GENERATIONS = 3
-EVALUATION_METRICS = ['racial_equity']#['carbon_offset','energy_generation','racial_equity'] #lexicase metrics to evaluate
-OVERALL_THRESHOLD = 0.1 #what fraction of TOTAL population reproduces, makes sure this matches 'survival_threshold' in neat-config
+NUM_GENERATIONS = 10
+EVALUATION_METRICS = ['carbon_offset','energy_generation','racial_equity','income_equity'] #lexicase metrics to evaluate
+OVERALL_THRESHOLD = 0.2 #what fraction of TOTAL population reproduces, makes sure this matches 'survival_threshold' in neat-config
 
 step_threshold = OVERALL_THRESHOLD ** (1/len(EVALUATION_METRICS)) #calculate what fraction survives after each metric is applied sequentially
 best_scores = []
@@ -34,7 +34,7 @@ def run_genome(genome, config, data_manager):
 #score a simulation and record the cumulative score across all metrics
 def score_order(info, eval_metric):
     score = data_manager.score(info[1], eval_metric, NUM_PANELS)
-    print("metric:", eval_metric,"score:",score)
+    # print("metric:", eval_metric,"score:",score)
     info[2] += score
     return score
 

@@ -3,15 +3,17 @@ from data_load_util import *
 from projections_util import *
 from tqdm import tqdm
 
+model_path = "Neat/models/11-15-24/NEAT_model1.pkl"
+
 combined_df = make_dataset(remove_outliers=True)
 state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
 
 max_num_added = 1850000
-Energy_projections, Energy_picked = create_projections(combined_df, state_df, n=max_num_added, load=True, metric='energy_generation_per_panel')
-Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, state_df, n=max_num_added, load=True, metric='carbon_offset_kg_per_panel')
+Energy_projections, Energy_picked = create_projections(combined_df, state_df, n=max_num_added, load=True, metric='energy_generation_per_panel', model_path=model_path)
+Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, state_df, n=max_num_added, load=True, metric='carbon_offset_kg_per_panel', model_path=model_path)
 
 panel_estimations_by_year = [("Net-Zero" , 479000 * 3), ("  2030  ", 479000 * 1), ("  2034  ", 479000 * 2)]
- 
+
 def plot_projections(projections, panel_estimations=None, net_zero_horizontal=False, interval=1, fontsize=30, fmts=["-X", "-H", "o-", "D-", "v-", "-8", "-p"], upper_bound='Greedy Carbon Offset', ylabel=None):
 
     plt.style.use("seaborn")

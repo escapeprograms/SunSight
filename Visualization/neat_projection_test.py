@@ -27,7 +27,7 @@ for i in range(0, data_manager.num_zips):
 zip_outputs.sort(key=lambda z: z[1], reverse=True) #sort by highest score
 zip_order = [index for index, score in zip_outputs]
 
-carbs = data_manager.greedy_projection(zip_order)
+carbs = data_manager.greedy_projection_accumulator(zip_order)
 print(carbs)
 '''
 State Columns
