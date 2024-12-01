@@ -74,7 +74,7 @@ def create_neat_projection(combined_df, state_df, n=1000, metric='carbon_offset_
 
     zip_outputs = []
     for i in range(0, data_manager.num_zips):
-        score = winner.activate(data_manager.network_inputs(i))
+        score = winner.activate(data_manager.network_inputs(i, train=False))
         zip_outputs.append((i, score))
 
     zip_outputs.sort(key=lambda z: z[1], reverse=True) #sort zip codes by highest score
@@ -128,7 +128,7 @@ def create_random_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_pe
     return projection
 
 # Creates multiple different projections and returns them
-def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, model_path=""):
+def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, model_path="Neat/models/NEAT_model.pkl"):
     ## TODO remove rrtest (just for a new version of round robin)
     if load and exists("Clean_Data/projections_"+metric+".csv") and exists("Clean_Data/projections_picked.csv"):
         return pd.read_csv("Clean_Data/projections_"+metric+".csv"), pd.read_csv("Clean_Data/projections_picked.csv")

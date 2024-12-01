@@ -51,7 +51,7 @@ node_delete_prob        = 0.2
 num_hidden              = 0
 
 #multiple inputs
-num_inputs              = 7
+num_inputs              = 28
 
 #one output: the evaluation of the zip code
 num_outputs             = 1
@@ -83,5 +83,5 @@ max_stagnation       = 20
 species_elitism      = 2
 
 [DefaultReproduction]
-elitism            = 0
-survival_threshold = 0.2
+elitism            = 1
+survival_threshold = 0.3

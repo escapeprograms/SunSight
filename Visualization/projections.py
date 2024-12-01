@@ -3,14 +3,15 @@ from data_load_util import *
 from projections_util import *
 from tqdm import tqdm
 
-model_path = "Neat/models/11-15-24/NEAT_model1.pkl"
+model_path = "Neat/models/11-30-24/NEAT_model_random.pkl"
+load = False #set this to False if using a new model
 
 combined_df = make_dataset(remove_outliers=True)
 state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
 
 max_num_added = 1850000
-Energy_projections, Energy_picked = create_projections(combined_df, state_df, n=max_num_added, load=True, metric='energy_generation_per_panel', model_path=model_path)
-Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, state_df, n=max_num_added, load=True, metric='carbon_offset_kg_per_panel', model_path=model_path)
+Energy_projections, Energy_picked = create_projections(combined_df, state_df, n=max_num_added, load=load, metric='energy_generation_per_panel', model_path=model_path)
+Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, state_df, n=max_num_added, load=load, metric='carbon_offset_kg_per_panel', model_path=model_path)
 
 panel_estimations_by_year = [("Net-Zero" , 479000 * 3), ("  2030  ", 479000 * 1), ("  2034  ", 479000 * 2)]
 
