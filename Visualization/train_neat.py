@@ -206,7 +206,7 @@ if __name__ == '__main__':
     combined_df = make_dataset(remove_outliers=True)
     state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
     data_manager = DataManager(combined_df, state_df)
-    k_folds = 3
+    k_folds = 5
 
     #run lexicase
     lexi_network, lexi_results = K_fold_run(config_path, data_manager, eval_genomes_lexicase, k=k_folds)
@@ -218,7 +218,7 @@ if __name__ == '__main__':
 
     #tournament selection
     tourney_network, tourney_results = K_fold_run(config_path, data_manager, eval_genomes_weighted_sum, reproduction_method=TournamentReproduction, k=k_folds)
-    save_model(tourney_network, model_name="NEAT_model_tournament.pkl", results_name="tourney_results.pkl")
+    save_model(tourney_network, model_name="NEAT_model_tournament.pkl", results_name="tournament_results.pkl")
 
     #run random selection
     rand_network, rand_results = K_fold_run(config_path, data_manager, eval_genomes_random, k=k_folds)
@@ -233,10 +233,10 @@ if __name__ == '__main__':
         print(f"Fitness prop {result_metrics[i]}", res)
         
     for i, res in enumerate(tourney_results):
-        print(f"Fitness prop {result_metrics[i]}", res)
+        print(f"Tourney {result_metrics[i]}", res)
 
     for i, res in enumerate(rand_results):
-        print(f"Fitness prop {result_metrics[i]}", res)
+        print(f"Random {result_metrics[i]}", res)
 
     # for i, res in enumerate(rand_results):
     #     print(f"Random {result_metrics[i]}", res)

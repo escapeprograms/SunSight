@@ -3,7 +3,7 @@ from data_load_util import *
 from projections_util import *
 from tqdm import tqdm
 
-model_path = "Neat/models/11-30-24/NEAT_model_fitness_prop.pkl"
+model_path = "Neat/models/12-02-24/NEAT_model_random.pkl"
 load = False #set this to False if using a new model
 
 combined_df = make_dataset(remove_outliers=True)
