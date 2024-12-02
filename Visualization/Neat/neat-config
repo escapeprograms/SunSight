@@ -83,5 +83,13 @@ max_stagnation       = 20
 species_elitism      = 2
 
 [DefaultReproduction]
-elitism            = 1
+elitism            = 0
+survival_threshold = 0.3
+
+[FitnessPropReproduction]
+elitism            = 0
+survival_threshold = 0.3
+
+[TournamentReproduction]
+elitism            = 0
 survival_threshold = 0.3

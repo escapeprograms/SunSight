@@ -6,6 +6,7 @@ import pickle
 import neat
 import numpy as np
 from Neat.evaluation_util import DataManager
+from Neat.selection_util import TournamentReproduction, FitnessPropReproduction
 from data_load_util import load_state_data, make_dataset
 from tqdm import tqdm
 import random
@@ -17,6 +18,8 @@ NUM_GENERATIONS = 3
 EVALUATION_METRICS = ['carbon_offset','energy_generation','racial_equity','income_equity'] #lexicase metrics to evaluate
 METRIC_WEIGHTS = [1,3,1,1] #how much each metric should weight
 OVERALL_THRESHOLD = 0.3 #what fraction of TOTAL population reproduces, makes sure this matches 'survival_threshold' in neat-config
+
+TOURNAMENT_K = 16 #number of models selected per "tournament" (tournament selection only)
 
 step_threshold = OVERALL_THRESHOLD ** (1/sum(METRIC_WEIGHTS)) #calculate what fraction survives after each metric is applied sequentially
 best_scores = []
@@ -83,8 +86,11 @@ def eval_genomes_lexicase(genomes, config):
         #     genome_info[i][2] -= i
         
     #set tie-breaker fitness for final survivors
-    for genome, zip_order, score in genome_info:
-        genome.fitness = score #note: this score can go up to NUM_PANELS * len(EVALUATION_METRICS)
+    final_threshold = np.ceil(len(genomes) * OVERALL_THRESHOLD).astype(int)
+    genome_info.sort(key = lambda info: info[2], reverse=True)
+
+    for genome, zip_order, score in genome_info[0:final_threshold]:
+        genome.fitness = score
 
         #find the best performing score in this generation
         if genome.fitness > best_score:
@@ -95,7 +101,7 @@ def eval_genomes_lexicase(genomes, config):
 
 
 #fitness proportion
-def eval_genomes_fitness_prop(genomes, config):
+def eval_genomes_weighted_sum(genomes, config):
     best_score = float('-inf') #record best score
     
     #get zip orders for all genomes by running each NN once
@@ -124,35 +130,6 @@ def eval_genomes_fitness_prop(genomes, config):
     #mark the best score of this generation
     best_scores.append(best_score)
 
-#tournament selection TODO
-def eval_genomes_tournament(genomes, config):
-    best_score = float('-inf') #record best score
-    
-    #get zip orders for all genomes by running each NN once
-    genome_info = [] #stores genome, zip_order, and cumulative score
-    for genome_id, genome in tqdm(genomes):
-        genome.fitness = 0 #set all fitness to a 0 initially
-        
-        net = neat.nn.FeedForwardNetwork.create(genome, config)
-        zip_order = run_network(net, data_manager)
-        genome_info.append([genome, zip_order, 0]) #genome pointer, zip_order, and cumulative score
-
-    #fitness prop: evaluate based on sum of all metrics (weighted)
-    indices = np.arange(len(EVALUATION_METRICS))
-    for i in indices:
-        for j in range(len(genome_info)):
-            score_order(genome_info[j], i)
-        
-    #set the fitnesses for all genomes
-    for genome, zip_order, score in genome_info:
-        genome.fitness = score #note: this score can go up to NUM_PANELS * len(EVALUATION_METRICS)
-
-        #find the best performing score in this generation
-        if genome.fitness > best_score:
-            best_score = genome.fitness
-
-    #mark the best score of this generation
-    best_scores.append(best_score)
 
 #random selection
 def eval_genomes_random(genomes, config):
@@ -161,10 +138,10 @@ def eval_genomes_random(genomes, config):
         
 
 #do a single training run
-def run(config_file, selection_method, checkpoint=0):
+def run(config_file, selection_method, reproduction_method=neat.DefaultReproduction, checkpoint=0):
     print("loading configuration...")
     # Load configuration.
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+    config = neat.Config(neat.DefaultGenome, reproduction_method,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
 
@@ -196,7 +173,7 @@ def run(config_file, selection_method, checkpoint=0):
     return winner_net
 
 #do a full K-fold runs
-def K_fold_run(config_path, data_manager, selection_method, k=5):
+def K_fold_run(config_path, data_manager, selection_method, reproduction_method=neat.DefaultReproduction, k=5):
     data_manager.generate_folds(k)
 
     scores = []
@@ -204,7 +181,7 @@ def K_fold_run(config_path, data_manager, selection_method, k=5):
     for i in range(k):
         print(f"running fold {i}")
         data_manager.set_fold(i)
-        winner_net = run(config_path, selection_method)
+        winner_net = run(config_path, selection_method, reproduction_method)
         networks.append(winner_net)
 
         #evaluate network on test set
@@ -229,35 +206,51 @@ if __name__ == '__main__':
     combined_df = make_dataset(remove_outliers=True)
     state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
     data_manager = DataManager(combined_df, state_df)
+    k_folds = 3
 
     #run lexicase
-    # lexi_network, lexi_results = K_fold_run(config_path, data_manager, eval_genomes_lexicase, k=5)
-    # save_model(lexi_network, lexi_results, model_name="NEAT_model_lexicase.pkl", results_name="lexicase_results.pkl")
+    lexi_network, lexi_results = K_fold_run(config_path, data_manager, eval_genomes_lexicase, k=k_folds)
+    save_model(lexi_network, lexi_results, model_name="NEAT_model_lexicase.pkl", results_name="lexicase_results.pkl")
     
     #run fitness prop
-    fp_network, fp_results = K_fold_run(config_path, data_manager, eval_genomes_fitness_prop, k=5)
+    fp_network, fp_results = K_fold_run(config_path, data_manager, eval_genomes_weighted_sum, reproduction_method=FitnessPropReproduction, k=k_folds)
     save_model(fp_network, fp_results, model_name="NEAT_model_fitness_prop.pkl", results_name="fitness_prop_results.pkl")
 
     #tournament selection
-    # tourney_network, tourney_results = K_fold_run(config_path, data_manager, eval_genomes_tournament, k=5)
-    # save_model(tourney_network, model_name="NEAT_model_tournament.pkl")
-
+    tourney_network, tourney_results = K_fold_run(config_path, data_manager, eval_genomes_weighted_sum, reproduction_method=TournamentReproduction, k=k_folds)
+    save_model(tourney_network, model_name="NEAT_model_tournament.pkl", results_name="tourney_results.pkl")
 
     #run random selection
-    rand_network, rand_results = K_fold_run(config_path, data_manager, eval_genomes_random, k=5)
+    rand_network, rand_results = K_fold_run(config_path, data_manager, eval_genomes_random, k=k_folds)
     save_model(rand_network, model_name="NEAT_model_random.pkl")
 
     #print results
     result_metrics = ['income_equity', 'racial_equity', 'carbon_offset', 'energy_generation']
-    # for i, res in enumerate(lexi_results):
-    #     print(f"Lexicase {result_metrics[i]}", res)
+    for i, res in enumerate(lexi_results):
+        print(f"Lexicase {result_metrics[i]}", res)
     
     for i, res in enumerate(fp_results):
         print(f"Fitness prop {result_metrics[i]}", res)
+        
+    for i, res in enumerate(tourney_results):
+        print(f"Fitness prop {result_metrics[i]}", res)
 
     for i, res in enumerate(rand_results):
-        print(f"Random {result_metrics[i]}", res)
+        print(f"Fitness prop {result_metrics[i]}", res)
+
+    # for i, res in enumerate(rand_results):
+    #     print(f"Random {result_metrics[i]}", res)
     
+
+
+
+
+
+
+
+
+
+
     # data_manager.train_test_split(test_size = 0.0) #no test set for now
     # data_manager.generate_folds(5)
     # data_manager.set_fold(0)
