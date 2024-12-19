@@ -94,8 +94,7 @@ class FitnessPropReproduction(DefaultReproduction):
             while spawn > 0:
                 spawn -= 1
 
-                #softmax at home :)
-                weights = [math.exp(m[1].fitness) for m in old_members]
+                weights = [m[1].fitness for m in old_members]
                 parent1_id, parent1 = random.choices(old_members, weights=weights)[0]
                 parent2_id, parent2 = random.choices(old_members, weights=weights)[0]
 

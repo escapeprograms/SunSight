@@ -3,8 +3,8 @@ from data_load_util import *
 from projections_util import *
 from tqdm import tqdm
 
-model_path = "Neat/models/12-02-24/NEAT_model_random.pkl"
-load = False #set this to False if using a new model
+model_path = "Neat/models/12-18-24/NEAT_model_lexicase.pkl"
+load = True #set this to False if using a new model
 
 combined_df = make_dataset(remove_outliers=True)
 state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
@@ -12,6 +12,8 @@ state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
 max_num_added = 1850000
 Energy_projections, Energy_picked = create_projections(combined_df, state_df, n=max_num_added, load=load, metric='energy_generation_per_panel', model_path=model_path)
 Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, state_df, n=max_num_added, load=load, metric='carbon_offset_kg_per_panel', model_path=model_path)
+Racial_equity_projections = create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=True, metric="black_prop")
+Income_equity_projections = create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=True, metric="Median_income")
 
 panel_estimations_by_year = [("Net-Zero" , 479000 * 3), ("  2030  ", 479000 * 1), ("  2034  ", 479000 * 2)]
 
@@ -134,8 +136,8 @@ def plot_demo_state_stats(new_df,save="Clean_Data/data_by_state_proj.csv"):
     bar_plot_demo_split(new_df, demos=["black_prop", "white_prop","Median_income", "asian_prop"], key="carbon_offset_kg", xticks=['Black', 'White', 'Asian','Income'] , type=type, stacked=stacked, ylabel="Potential Carbon Offset (x Avg)", title="", hatches=hatches, annotate=annotate, legend=True)
     bar_plot_demo_split(new_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop"], xticks=['Black', 'White', 'Asian', 'Income'], key="existing_installs_count_per_capita", type=type, stacked=stacked, ylabel="Existing Installs Per Capita (x Avg)", title="", hatches=hatches, annotate=annotate,  legend=True)
 
-plot_projections(Carbon_offset_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon-Efficient', ylabel="Carbon Offset (kg)")
-plot_projections(Energy_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Energy-Efficient', ylabel="Additional Energy Capacity (kWh)")
+# plot_projections(Carbon_offset_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon-Efficient', ylabel="Carbon Offset (kg)")
+# plot_projections(Energy_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Energy-Efficient', ylabel="Additional Energy Capacity (kWh)")
 
 # print(Energy_picked[''])
 
@@ -143,9 +145,9 @@ plot_projections(Energy_projections, panel_estimations_by_year, net_zero_horizon
 #     plot_picked(combined_df, Energy_picked[key], None, title="")
 
 #print NEAT picks
-print(Energy_picked['NEAT-Evaluation'].head())
-plot_picked(combined_df, Energy_picked['NEAT-Evaluation'], None, title="")
-quit()
+# print(Energy_picked['NEAT-Evaluation'].head())
+# plot_picked(combined_df, Energy_picked['NEAT-Evaluation'], None, title="")
+# quit()
 
 def weighted_proj_heatmap(combined_df, metric='carbon_offset_kg_per_panel', objectives=['carbon_offset_kg_per_panel', 'energy_generation_per_panel', 'black_prop']):
     weight_starts = [0.0, 0.0]
@@ -173,3 +175,48 @@ def weighted_proj_heatmap(combined_df, metric='carbon_offset_kg_per_panel', obje
 
 # plot_demo_state_stats(round_robin_df, save="Projection_Data/data_by_state_proj_greedy_round_robink.csv")
 # plot_demo_state_stats(energy_df, save="Projection_Data/data_by_state_proj_greedy_weighted.csv")
+
+def plot_ratio(all_metric_projections, base_key, comparison_key, metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 1, fontsize=30, fmts=["-X", "-H", "o-", "D-", "v-", "-8", "-p"]):
+    
+    plt.style.use("seaborn")
+    font = {'family' : 'DejaVu Sans',
+    'weight' : 'bold',
+    'size'   : fontsize}
+
+    matplotlib.rc('font', **font)
+
+    #calculate ratios between the base and the comparison
+    ratios = pd.DataFrame()
+    for metric, projection in zip(metric_labels, all_metric_projections):
+        ratios[metric] = projection[comparison_key]/projection[base_key]
+
+    #plot ratios
+    x = np.arange((len(ratios[metric_labels[0]]) // interval) + 1) * interval
+
+    for key, fmt in zip(metric_labels, fmts):
+        plt.plot(x, np.array(ratios[key])[0::interval], fmt, label=key, linewidth=3, markersize=8, alpha=0.9)
+        plt.xlabel("Additional Panels Built", fontsize=fontsize, labelpad=20)
+
+    #show baseline
+    plt.hlines(1, 0, x[-1], colors='black' , linestyles='dashed', linewidth=2, alpha=0.5)
+
+    # plt.ylim(0, 2) #set the range of the plots
+    plt.ylabel(f"Ratio to {base_key}", fontsize=fontsize, labelpad=20)
+    plt.legend(fontsize=fontsize/1.5)
+    plt.title(f"Performance of {comparison_key}")
+    # plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+    #       ncol=1, shadow=True, fontsize=fontsize/1.4)
+    plt.tight_layout()
+    plt.show()
+
+plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Evaluation", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
+
+plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Carbon-Efficient", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
+
+plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Energy-Efficient", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
+
+plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Racial-Equity-Aware", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
+
+plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Income-Equity-Aware", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
+
+plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Round Robin", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)

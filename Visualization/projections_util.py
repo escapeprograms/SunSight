@@ -10,8 +10,8 @@ def create_continued_projection(combined_df, n=1000, metric='carbon_offset_metri
     # print("total, current existing panels:", total_panels)
     panel_percentage = combined_df['existing_installs_count'] / total_panels
     ratiod_carbon_offset_per_panel = np.sum(panel_percentage * combined_df[metric])
-    x = np.arange(n+1) * ratiod_carbon_offset_per_panel
-    print (x.shape)
+    # x = np.arange(n+1) * ratiod_carbon_offset_per_panel
+    # print (x.shape)
     return np.arange(n+1) * ratiod_carbon_offset_per_panel
 
 # Greedily adds 1-> n solar panels to zips which maximize the sort_by metric until no more can be added
@@ -39,6 +39,86 @@ def create_greedy_projection(combined_df, n=1000, sort_by='carbon_offset_metric_
                 picked.append(sorted_combined_df['region_name'][greedy_best_not_filled_index]) #record every panel location in order
     
     return projection, picked
+
+def create_continued_equity_projection(combined_df, n=1000, metric='Median_income'):
+    #NOTE: only works with thresholds=2; will need to copy DataManager.score_racial_equity to handle k thresholds
+    k = 2
+    q = np.linspace(0, 1, k+1)
+    thresholds = combined_df[metric].quantile(q).to_numpy() 
+
+    total_panels = np.sum(combined_df['existing_installs_count'])
+
+    #look at pre-existing buckets only
+    combined_df[f'{metric}_bucket'] = pd.cut(
+    combined_df[metric],
+    bins=thresholds
+    )
+
+    # Group by metric and sum SolarPanels
+    buckets = combined_df.groupby(f'{metric}_bucket')['existing_installs_count'].sum().tolist()
+
+    equity_ratio = abs(buckets[1]-buckets[0])/total_panels #the equity doesn't change over time
+    # print(f"continued {metric} equity ratio:", equity_ratio)
+    x = np.arange(total_panels, total_panels + n+1) * equity_ratio
+    # print("final diff:", x[-1])
+    return x
+
+
+def create_equity_projection_from_picked(combined_df, picked = pd.DataFrame(), n=1000, metric='Median_income'):
+    #picked is a list of zip codes, we need a list of indices
+    #NOTE: only works with k=2; will need to copy DataManager.score_racial_equity to handle k thresholds
+    k = 2
+    q = np.linspace(0, 1, k+1)
+    thresholds = combined_df[metric].quantile(q).to_numpy() 
+
+    ordered_index = 0
+    greedy_index = combined_df[combined_df['region_name'] == picked[ordered_index]].index[0] #gets the index of the zip code
+    existing_count = combined_df['existing_installs_count'][greedy_index]
+
+    i = 0 #panel counter
+    bucket = 0 #bucket index
+    # buckets = [0 for i in range(len(thresholds)-1)]
+    
+    #add pre-existing buckets first
+    combined_df[f'{metric}_bucket'] = pd.cut(
+    combined_df[metric],
+    bins=thresholds
+    )
+
+    # Group by metric and sum SolarPanels
+    buckets = combined_df.groupby(f'{metric}_bucket')['existing_installs_count'].sum().tolist()
+
+    #set the bucket initially
+    value = combined_df.iloc[greedy_index][metric]
+    for j in range(len(thresholds)):
+        if value > thresholds[j]:
+            bucket = j
+
+    
+    equity_projection = np.zeros(n+1)
+    equity_projection[0] = abs(buckets[1]-buckets[0])
+
+    
+    #place panels
+    while (i < n):
+        if existing_count >= combined_df['count_qualified'][greedy_index]: # this location is full
+            ordered_index += 1
+            greedy_index = combined_df[combined_df['region_name'] == picked[ordered_index]].index[0] #gets the index of the zip code
+
+            existing_count = combined_df['existing_installs_count'][greedy_index]
+
+            #set the bucket to add to (use normalized value)
+            value = combined_df.iloc[greedy_index][metric]
+
+            for j in range(len(thresholds)):
+                if value > thresholds[j]:
+                    bucket = j
+        else:
+            equity_projection[i+1] = abs(buckets[1]-buckets[0]) #find diff between panels in below median zips and panels in above median zips
+            existing_count += 1
+            i += 1
+            buckets[bucket] += 1
+    return equity_projection
 
 # Creates a projection which decides each placement alternating between different policies
 def create_round_robin_projection(projection_list, picked_list):
@@ -175,6 +255,50 @@ def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon
         picked.to_csv("Clean_Data/projections_picked.csv", index=False)
 
     return proj, picked
+
+# Creates multiple different equity projections and returns them TODO
+def create_equity_projections(combined_df, picked, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True):
+    ## TODO remove rrtest (just for a new version of round robin)
+    if load and exists("Clean_Data/equity_projections_"+metric+".csv"):
+        return pd.read_csv("Clean_Data/equity_projections_"+metric+".csv")
+
+    proj = pd.DataFrame()
+    print("Creating Continued Equity Projection")
+    proj['Status-Quo'] = create_continued_equity_projection(combined_df, n, metric=metric)
+    print("Creating Greedy Carbon Offset Equity Projection")
+    proj['Carbon-Efficient'] = create_equity_projection_from_picked(combined_df, picked['Carbon-Efficient'], n, metric=metric)
+    print("Creating Greedy Average Sun Equity Projection")
+    proj['Energy-Efficient'] = create_equity_projection_from_picked(combined_df, picked['Energy-Efficient'], n, metric=metric)
+    print("Creating Greedy Black Proportion Equity Projection")
+    proj['Racial-Equity-Aware'] = create_equity_projection_from_picked(combined_df, picked['Racial-Equity-Aware'], n, metric=metric)
+    print("Creating Greedy Low Median Income Equity Projection")
+    proj['Income-Equity-Aware'] = create_equity_projection_from_picked(combined_df, picked['Income-Equity-Aware'], n, metric=metric)
+
+    print("Creating Round Robin Equity Projection")
+    proj['Round Robin'] = create_equity_projection_from_picked(combined_df, picked['Round Robin'], n, metric=metric)
+
+    print("Creating NEAT Equity Projection")
+    proj['NEAT-Evaluation'] = create_equity_projection_from_picked(combined_df, picked['NEAT-Evaluation'], n, metric=metric)
+
+    # TESTING
+    # print("Creating Random Projection")
+    # proj['Random'] = create_random_proj(combined_df,n, metric)
+    # print("Creating Weighted Greedy Projection")
+    # proj['Weighted Greedy'], picked['Weighted Greedy'] = create_weighted_proj(combined_df, n, ['carbon_offset_metric_tons_per_panel', 'yearly_sunlight_kwh_kw_threshold_avg', 'black_prop'], [2,4,1], metric=metric)
+
+    # uniform_samples = 10
+
+    # print("Creating uniform random projection with", uniform_samples, "samples")
+
+    # proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] = np.zeros(n+1)
+    # for i in range(uniform_samples):
+    #     proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] += create_random_proj(combined_df, n)/uniform_samples
+    
+    ## TODO remove rrtest (just for a new version of round robin)
+    if save:
+        proj.to_csv("Clean_Data/equity_projections_"+metric+".csv",index=False)
+
+    return proj
 
 # Searches over many different weight settings, with the first weight being set permenantly to 1 and the other two being set proportionally
 # Returns a 2d array of projections (i.e. 3d array)

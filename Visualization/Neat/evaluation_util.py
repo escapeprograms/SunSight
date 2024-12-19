@@ -4,12 +4,13 @@ import pandas as pd
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold
+import warnings
 
 
 #data manager
 class DataManager:
     def __init__(self, combined_df, state_df,
-                 fields=['Republican_prop', 'Median_income', 'carbon_offset_kg_per_panel', 'energy_generation_per_panel', 'realized_potential_percent', 'black_prop']):
+                 fields=['Median_income', 'carbon_offset_kg_per_panel', 'energy_generation_per_panel', 'realized_potential_percent', 'black_prop']):
         #Note: remove Republican_prop
         #fields needs to consider energy efficiency, equity, and carbon efficiency
         self.combined_df = combined_df
@@ -24,8 +25,8 @@ class DataManager:
         self.racial_thresholds = None
         self.income_thresholds = None
 
-        #for polynomial basis expansion for network inputs
-        self.poly = PolynomialFeatures(degree=2)
+        #for polynomial basis expansion for network inputs (unused)
+        self.poly = PolynomialFeatures(degree=1)
 
     def synthesize_df(self): #create a full df per zip code
         #change the Washington, D.C. key in state_df to be compatible with combined_df
@@ -58,12 +59,18 @@ class DataManager:
     #generate k folds of data from the train data; call this once
     def generate_folds(self, k=5, random_state=69):
         skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
+        self.k_folds = []
 
         for train_idx, test_idx in skf.split(self.train_df, self.train_df['State']):
             self.k_folds.append((train_idx, test_idx))
 
     #get the indices of a specific fold
     def get_fold_indices(self, num=None):
+        #handle case where k folds haven't been set
+        if len(self.k_folds) == 0:
+            # warnings.warn("No folds has been set. Run generate_folds() before calling get_fold_indices().")
+            return range(self.num_zips), []
+        
         if num == None:
             num = self.fold_num #default to the currently selected fold
         
@@ -208,6 +215,7 @@ class DataManager:
             return self.score_energy_generation(zip_order, n, train=train)
     
     def score_racial_equity(self, zip_order, n=1000, k=2, train=True):
+        #NOTE: only works with k=2
         #get bucket thresholds for percentiles
         if not isinstance(self.racial_thresholds, np.ndarray):
             #only calculate these once; note: k CANNOT change once this is set
@@ -220,11 +228,14 @@ class DataManager:
 
         total_panels = sum(buckets)
         #get "error": squared relative difference from a uniform distribution (each bucket has total_panels/k)
-        errors = np.array([(bucket - total_panels/k)/(total_panels/k) for bucket in buckets])
+        # errors = np.array([(bucket - total_panels/k)/(total_panels/k) for bucket in buckets])
+        # return 1 - (np.sum(errors**2)/k) #take the negative sum of squared error, normalized to [0,1]
 
-        return 1 - (np.sum(errors**2)/k) #take the negative sum of squared error, normalized to [0,1]
+        diff = abs(buckets[1]-buckets[0])
+        return 1 - (diff/total_panels)
 
     def score_income_equity(self, zip_order, n=1000, k=2, train=True):
+        #NOTE: only works with k=2
         #get bucket thresholds for percentiles
         if not isinstance(self.income_thresholds, np.ndarray):
             #only calculate these once; note: k CANNOT change once this is set
@@ -238,9 +249,12 @@ class DataManager:
         total_panels = sum(buckets)
 
         #get "error": squared relative difference from a uniform distribution (each bucket has total_panels/k)
-        errors = np.array([(bucket - total_panels/k)/(total_panels/k) for bucket in buckets])
+        # errors = np.array([(bucket - total_panels/k)/(total_panels/k) for bucket in buckets])
 
-        return 1 - (np.sum(errors**2)/k) #take the negative sum of squared error, normalized to [0,1]
+        # return 1 - (np.sum(errors**2)/k) #take the negative sum of squared error, normalized to [0,1]
+
+        diff = abs(buckets[1]-buckets[0])
+        return 1 - (diff/total_panels)
     
 
     def score_carbon_offset(self, zip_order, n=1000, train=True):

@@ -13,10 +13,10 @@ import random
 from Neat.saving_util import *
 
 #constants
-NUM_PANELS = 100000
+NUM_PANELS = 1000000
 NUM_GENERATIONS = 3
 EVALUATION_METRICS = ['carbon_offset','energy_generation','racial_equity','income_equity'] #lexicase metrics to evaluate
-METRIC_WEIGHTS = [1,3,1,1] #how much each metric should weight
+METRIC_WEIGHTS = [1,1,1,1] #how much each metric should weight
 OVERALL_THRESHOLD = 0.3 #what fraction of TOTAL population reproduces, makes sure this matches 'survival_threshold' in neat-config
 
 TOURNAMENT_K = 16 #number of models selected per "tournament" (tournament selection only)
@@ -27,17 +27,20 @@ best_scores = []
 #run a simulation
 def run_network(net, data_manager, train=True, cross_val = False):
     zip_outputs = []
-    train_ind, test_ind = data_manager.get_fold_indices()
-
-    #cross val vs train
-    if cross_val == False:
-        indices = train_ind
-    else:
-        indices = test_ind
-
-    #test set
+    #regular usage
     if train == False:
         indices = range(data_manager.num_zips)
+    else:
+        #train set
+        train_ind, test_ind = data_manager.get_fold_indices()
+
+        #cross val vs train
+        if cross_val == False:
+            indices = train_ind
+        else:
+            indices = test_ind
+
+
 
     for i in indices:
         score = net.activate(data_manager.network_inputs(i, train=True))
@@ -197,53 +200,52 @@ def K_fold_run(config_path, data_manager, selection_method, reproduction_method=
     scores_np = np.array(scores)
     return networks[0], np.mean(scores_np, axis=0)
     
+#load datasets
+print("Loading data_manager for NEAT")
+combined_df = make_dataset(remove_outliers=True)
+state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
+data_manager = DataManager(combined_df, state_df)
 
-if __name__ == '__main__':
+
+if __name__=="__main__":
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'Neat/neat-config')
 
-    #load datasets
-    combined_df = make_dataset(remove_outliers=True)
-    state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
-    data_manager = DataManager(combined_df, state_df)
-    k_folds = 5
+    # k_folds = 5
 
-    #run lexicase
-    lexi_network, lexi_results = K_fold_run(config_path, data_manager, eval_genomes_lexicase, k=k_folds)
-    save_model(lexi_network, lexi_results, model_name="NEAT_model_lexicase.pkl", results_name="lexicase_results.pkl")
+    # #run lexicase
+    # lexi_network, lexi_results = K_fold_run(config_path, data_manager, eval_genomes_lexicase, k=k_folds)
+    # save_model(lexi_network, lexi_results, model_name="NEAT_model_lexicase.pkl", results_name="lexicase_results.pkl")
     
-    #run fitness prop
-    fp_network, fp_results = K_fold_run(config_path, data_manager, eval_genomes_weighted_sum, reproduction_method=FitnessPropReproduction, k=k_folds)
-    save_model(fp_network, fp_results, model_name="NEAT_model_fitness_prop.pkl", results_name="fitness_prop_results.pkl")
+    # #run fitness prop
+    # fp_network, fp_results = K_fold_run(config_path, data_manager, eval_genomes_weighted_sum, reproduction_method=FitnessPropReproduction, k=k_folds)
+    # save_model(fp_network, fp_results, model_name="NEAT_model_fitness_prop.pkl", results_name="fitness_prop_results.pkl")
 
-    #tournament selection
-    tourney_network, tourney_results = K_fold_run(config_path, data_manager, eval_genomes_weighted_sum, reproduction_method=TournamentReproduction, k=k_folds)
-    save_model(tourney_network, model_name="NEAT_model_tournament.pkl", results_name="tournament_results.pkl")
+    # #tournament selection
+    # tourney_network, tourney_results = K_fold_run(config_path, data_manager, eval_genomes_weighted_sum, reproduction_method=TournamentReproduction, k=k_folds)
+    # save_model(tourney_network, model_name="NEAT_model_tournament.pkl", results_name="tournament_results.pkl")
 
-    #run random selection
-    rand_network, rand_results = K_fold_run(config_path, data_manager, eval_genomes_random, k=k_folds)
-    save_model(rand_network, model_name="NEAT_model_random.pkl")
+    # #run random selection
+    # rand_network, rand_results = K_fold_run(config_path, data_manager, eval_genomes_random, k=k_folds)
+    # save_model(rand_network, model_name="NEAT_model_random.pkl")
 
-    #print results
-    result_metrics = ['income_equity', 'racial_equity', 'carbon_offset', 'energy_generation']
-    for i, res in enumerate(lexi_results):
-        print(f"Lexicase {result_metrics[i]}", res)
+    # #print results
+    # result_metrics = ['income_equity', 'racial_equity', 'carbon_offset', 'energy_generation']
+    # for i, res in enumerate(lexi_results):
+    #     print(f"Lexicase {result_metrics[i]}", res)
     
-    for i, res in enumerate(fp_results):
-        print(f"Fitness prop {result_metrics[i]}", res)
+    # for i, res in enumerate(fp_results):
+    #     print(f"Fitness prop {result_metrics[i]}", res)
         
-    for i, res in enumerate(tourney_results):
-        print(f"Tourney {result_metrics[i]}", res)
+    # for i, res in enumerate(tourney_results):
+    #     print(f"Tourney {result_metrics[i]}", res)
 
-    for i, res in enumerate(rand_results):
-        print(f"Random {result_metrics[i]}", res)
+    # for i, res in enumerate(rand_results):
+    #     print(f"Random {result_metrics[i]}", res)
 
     # for i, res in enumerate(rand_results):
     #     print(f"Random {result_metrics[i]}", res)
     
-
-
-
 
 
 

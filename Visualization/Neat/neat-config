@@ -51,7 +51,7 @@ node_delete_prob        = 0.2
 num_hidden              = 0
 
 #multiple inputs
-num_inputs              = 28
+num_inputs              = 6
 
 #one output: the evaluation of the zip code
 num_outputs             = 1
