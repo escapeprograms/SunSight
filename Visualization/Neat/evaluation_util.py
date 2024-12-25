@@ -42,7 +42,9 @@ class DataManager:
         #normalize all inputs to [0,1] in new df
         self.normalized_df = (self.combined_df[self.fields] - self.combined_df[self.fields].min()) / (self.combined_df[self.fields].max() - self.combined_df[self.fields].min())
         self.normalized_df['State'] = self.combined_df['State']
-        self.normalized_df['existing_installs_count'] = self.combined_df['existing_installs_count']
+
+        #add existing installs count as not normalized
+        self.normalized_df['existing_installs_count'] = self.combined_df['existing_installs_count'] 
 
         #by default set the training set to all data
         self.train_df = self.normalized_df

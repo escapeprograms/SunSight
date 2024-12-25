@@ -1,3 +1,4 @@
+from collections import Counter
 import pickle
 from Neat.evaluation_util import DataManager
 from data_load_util import *
@@ -57,7 +58,7 @@ def create_continued_equity_projection(combined_df, n=1000, metric='Median_incom
     # Group by metric and sum SolarPanels
     buckets = combined_df.groupby(f'{metric}_bucket')['existing_installs_count'].sum().tolist()
 
-    equity_ratio = abs(buckets[1]-buckets[0])/total_panels #the equity doesn't change over time
+    equity_ratio = (buckets[1]-buckets[0])/total_panels #the equity doesn't change over time
     # print(f"continued {metric} equity ratio:", equity_ratio)
     x = np.arange(total_panels, total_panels + n+1) * equity_ratio
     # print("final diff:", x[-1])
@@ -94,31 +95,44 @@ def create_equity_projection_from_picked(combined_df, picked = pd.DataFrame(), n
         if value > thresholds[j]:
             bucket = j
 
-    
     equity_projection = np.zeros(n+1)
-    equity_projection[0] = abs(buckets[1]-buckets[0])
+    equity_projection[0] = (buckets[1]-buckets[0])
 
     
-    #place panels
-    while (i < n):
-        if existing_count >= combined_df['count_qualified'][greedy_index]: # this location is full
-            ordered_index += 1
-            greedy_index = combined_df[combined_df['region_name'] == picked[ordered_index]].index[0] #gets the index of the zip code
-
-            existing_count = combined_df['existing_installs_count'][greedy_index]
-
-            #set the bucket to add to (use normalized value)
+    # place panels
+    for i, zip_code in enumerate(picked):
+        #set the bucket to add to (use normalized value)
+        if i == 0 or picked[i] != picked[i-1]:
+            greedy_index = combined_df[combined_df['region_name'] == zip_code].index[0] #gets the index of the zip code
             value = combined_df.iloc[greedy_index][metric]
-
             for j in range(len(thresholds)):
                 if value > thresholds[j]:
                     bucket = j
-        else:
-            equity_projection[i+1] = abs(buckets[1]-buckets[0]) #find diff between panels in below median zips and panels in above median zips
-            existing_count += 1
-            i += 1
-            buckets[bucket] += 1
+
+        buckets[bucket] += 1
+        equity_projection[i] = (buckets[1]-buckets[0]) #find diff between panels in below median zips and panels in above median zips
     return equity_projection
+
+    #broken method
+    # while (i < n):
+    #     if existing_count >= combined_df['count_qualified'][greedy_index]: # this location is full
+    #         ordered_index += 1
+    #         greedy_index = combined_df[combined_df['region_name'] == picked[ordered_index]].index[0] #gets the index of the zip code
+
+    #         existing_count = combined_df['existing_installs_count'][greedy_index]
+
+    #         #set the bucket to add to (use normalized value)
+    #         value = combined_df.iloc[greedy_index][metric]
+
+    #         for j in range(len(thresholds)):
+    #             if value > thresholds[j]:
+    #                 bucket = j
+    #     else:
+    #         buckets[bucket] += 1
+    #         equity_projection[i+1] = (buckets[1]-buckets[0]) #find diff between panels in below median zips and panels in above median zips
+    #         existing_count += 1
+    #         i += 1
+    # return equity_projection
 
 # Creates a projection which decides each placement alternating between different policies
 def create_round_robin_projection(projection_list, picked_list):
@@ -159,6 +173,17 @@ def create_neat_projection(combined_df, state_df, n=1000, metric='carbon_offset_
 
     zip_outputs.sort(key=lambda z: z[1], reverse=True) #sort zip codes by highest score
     zip_order = [index for index, score in zip_outputs]
+
+    #TEMP: print out the projection buckets for race
+    # q = np.linspace(0, 1, 2+1)
+    # thresholds = data_manager.normalized_df["black_prop"].quantile(q).to_numpy()
+    # buckets, _ = data_manager.greedy_projection_bucket(zip_order, "black_prop", n=0, record=True, thresholds=thresholds)
+    # print("race buckets: 0",buckets[1]-buckets[0])
+    # print(buckets[0], buckets[1])
+
+    # buckets, picked100k = data_manager.greedy_projection_bucket(zip_order, "black_prop", n=100000, record=True, thresholds=thresholds)
+    # print("race buckets: 100k",buckets[1]-buckets[0])
+    # print(Counter(picked100k))
 
     #project using original data
     projection = np.zeros(n+1)

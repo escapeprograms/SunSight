@@ -142,6 +142,11 @@ def eval_genomes_random(genomes, config):
 
 #do a single training run
 def run(config_file, selection_method, reproduction_method=neat.DefaultReproduction, checkpoint=0):
+    print(f"NUM_PANELS={NUM_PANELS}",
+          f"NUM_GENERATIONS={NUM_GENERATIONS}",
+          f"METRIC_WEIGHTS={METRIC_WEIGHTS}",
+          f"OVERALL_THRESHOLD={OVERALL_THRESHOLD}")
+
     print("loading configuration...")
     # Load configuration.
     config = neat.Config(neat.DefaultGenome, reproduction_method,

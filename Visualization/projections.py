@@ -1,10 +1,11 @@
+from collections import Counter
 from plot_util import *
 from data_load_util import *
 from projections_util import *
 from tqdm import tqdm
 
-model_path = "Neat/models/12-18-24/NEAT_model_lexicase.pkl"
-load = True #set this to False if using a new model
+model_path = "Neat/models/12-24-24/NEAT_model1M.pkl"
+load = False #set this to False if using a new model
 
 combined_df = make_dataset(remove_outliers=True)
 state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
@@ -12,8 +13,8 @@ state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
 max_num_added = 1850000
 Energy_projections, Energy_picked = create_projections(combined_df, state_df, n=max_num_added, load=load, metric='energy_generation_per_panel', model_path=model_path)
 Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, state_df, n=max_num_added, load=load, metric='carbon_offset_kg_per_panel', model_path=model_path)
-Racial_equity_projections = create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=True, metric="black_prop")
-Income_equity_projections = create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=True, metric="Median_income")
+Racial_equity_projections = create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=load, metric="black_prop")
+Income_equity_projections = create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=load, metric="Median_income")
 
 panel_estimations_by_year = [("Net-Zero" , 479000 * 3), ("  2030  ", 479000 * 1), ("  2034  ", 479000 * 2)]
 
@@ -220,3 +221,47 @@ plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_project
 plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Income-Equity-Aware", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
 
 plot_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Round Robin", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
+
+def plot_values(all_metric_projections, base_key, comparison_key, metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 1, fontsize=30, fmts=["-X", "-H", "o-", "D-", "v-", "-8", "-p"]):
+    
+    plt.style.use("seaborn")
+    font = {'family' : 'DejaVu Sans',
+    'weight' : 'bold',
+    'size'   : fontsize}
+
+    matplotlib.rc('font', **font)
+
+    #calculate ratios between the base and the comparison
+    values = pd.DataFrame()
+    for metric, projection in zip(metric_labels, all_metric_projections):
+        values[metric] = projection[comparison_key]
+        values[f"{metric}-base"] = projection[base_key]
+
+    #plot ratios
+    x = np.arange((len(values[metric_labels[0]]) // interval) + 1) * interval
+
+    for key, fmt in zip(metric_labels, fmts):
+        plt.plot(x, np.array(values[key])[0::interval], fmt, label=key, linewidth=3, markersize=8, alpha=0.9)
+
+        plt.plot(x, np.array(values[f"{key}-base"])[0::interval], fmt, label=f"{key} baseline", linewidth=3, markersize=8, alpha=0.9)
+        plt.xlabel("Additional Panels Built", fontsize=fontsize, labelpad=20)
+
+    #show baseline
+    plt.hlines(1, 0, x[-1], colors='black' , linestyles='dashed', linewidth=2, alpha=0.5)
+
+    # plt.ylim(0, 2) #set the range of the plots
+    plt.ylabel(f"(above median - below median)", fontsize=fontsize/3, labelpad=20)
+    plt.legend(fontsize=fontsize/1.5)
+    plt.title(f"Equity measurements", fontsize=fontsize)
+    # plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+    #       ncol=1, shadow=True, fontsize=fontsize/1.4)
+    plt.tight_layout()
+    plt.show()
+
+plot_values([Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Evaluation", metric_labels = ['Racial Equity', 'Income Equity'], interval = 100000)
+
+# for panels in [0, 100000]:
+#     values = Racial_equity_projections["NEAT-Evaluation"]
+#     print(f"difference for {panels}: {values[panels]}")
+
+# print(Counter(Energy_picked["NEAT-Evaluation"]))
