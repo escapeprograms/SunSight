@@ -233,10 +233,14 @@ def create_random_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_pe
     return projection
 
 # Creates multiple different projections and returns them
-def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, model_path="Neat/models/NEAT_model.pkl"):
+def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, model_path="Neat/models/NEAT_model.pkl", save_label=None):
     ## TODO remove rrtest (just for a new version of round robin)
-    if load and exists("Clean_Data/projections_"+metric+".csv") and exists("Clean_Data/projections_picked.csv"):
-        return pd.read_csv("Clean_Data/projections_"+metric+".csv"), pd.read_csv("Clean_Data/projections_picked.csv")
+    label_suffix = ""
+    if save_label:
+        label_suffix = "_"+save_label
+
+    if load and exists("Clean_Data/projections_"+metric+label_suffix+".csv") and exists("Clean_Data/projections_picked"+label_suffix+".csv"):
+        return pd.read_csv("Clean_Data/projections_"+metric+label_suffix+".csv"), pd.read_csv("Clean_Data/projections_picked"+label_suffix+".csv")
     
     picked = pd.DataFrame()
     proj = pd.DataFrame()
@@ -276,16 +280,19 @@ def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon
     
     ## TODO remove rrtest (just for a new version of round robin)
     if save:
-        proj.to_csv("Clean_Data/projections_"+metric+".csv",index=False)
-        picked.to_csv("Clean_Data/projections_picked.csv", index=False)
+        proj.to_csv("Clean_Data/projections_"+metric+label_suffix+".csv",index=False)
+        picked.to_csv("Clean_Data/projections_picked"+label_suffix+".csv", index=False)
 
     return proj, picked
 
 # Creates multiple different equity projections and returns them TODO
-def create_equity_projections(combined_df, picked, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True):
-    ## TODO remove rrtest (just for a new version of round robin)
-    if load and exists("Clean_Data/equity_projections_"+metric+".csv"):
-        return pd.read_csv("Clean_Data/equity_projections_"+metric+".csv")
+def create_equity_projections(combined_df, picked, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, save_label=None):
+    label_suffix = ""
+    if save_label:
+        label_suffix = "_"+save_label
+        
+    if load and exists("Clean_Data/equity_projections_"+metric+label_suffix+".csv"):
+        return pd.read_csv("Clean_Data/equity_projections_"+metric+label_suffix+".csv")
 
     proj = pd.DataFrame()
     print("Creating Continued Equity Projection")
@@ -321,7 +328,7 @@ def create_equity_projections(combined_df, picked, n=1000, load=False, metric='c
     
     ## TODO remove rrtest (just for a new version of round robin)
     if save:
-        proj.to_csv("Clean_Data/equity_projections_"+metric+".csv",index=False)
+        proj.to_csv("Clean_Data/equity_projections_"+metric+label_suffix+".csv",index=False)
 
     return proj
 
