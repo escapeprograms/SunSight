@@ -4,9 +4,9 @@ from data_load_util import *
 from projections_util import *
 from tqdm import tqdm
 
-model_path = "Neat/models/12-24-24/NEAT_model100k.pkl"
-load = True #set this to False if using a new model
-save_label = "100k_panels" #get different projection saves
+model_path = "Neat/models/01-01-25/NEAT_model_no_equity.pkl"
+load = False #set this to False if using a new model
+save_label = "noequity" #get different projection saves
 
 combined_df = make_dataset(remove_outliers=True)
 state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
@@ -138,8 +138,8 @@ def plot_demo_state_stats(new_df,save="Clean_Data/data_by_state_proj.csv"):
     bar_plot_demo_split(new_df, demos=["black_prop", "white_prop","Median_income", "asian_prop"], key="carbon_offset_kg", xticks=['Black', 'White', 'Asian','Income'] , type=type, stacked=stacked, ylabel="Potential Carbon Offset (x Avg)", title="", hatches=hatches, annotate=annotate, legend=True)
     bar_plot_demo_split(new_df, demos=["black_prop", "white_prop", "Median_income", "asian_prop"], xticks=['Black', 'White', 'Asian', 'Income'], key="existing_installs_count_per_capita", type=type, stacked=stacked, ylabel="Existing Installs Per Capita (x Avg)", title="", hatches=hatches, annotate=annotate,  legend=True)
 
-# plot_projections(Carbon_offset_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon-Efficient', ylabel="Carbon Offset (kg)")
-# plot_projections(Energy_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Energy-Efficient', ylabel="Additional Energy Capacity (kWh)")
+plot_projections(Carbon_offset_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon-Efficient', ylabel="Carbon Offset (kg)")
+plot_projections(Energy_projections, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Energy-Efficient', ylabel="Additional Energy Capacity (kWh)")
 
 # print(Energy_picked[''])
 
@@ -259,7 +259,7 @@ def plot_comparison(all_metric_projections, base_key, comparison_key, metric_lab
     plt.tight_layout()
     plt.show()
 
-plot_comparison([Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Evaluation", metric_labels = ['Racial Equity', 'Income Equity'], interval = 100000, title="Realized Potential Disparity for NEAT trained on 100k panels", ylabel="Realized Potential Disparity across Median")
+plot_comparison([Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Evaluation", metric_labels = ['Racial Equity', 'Income Equity'], interval = 100000, title="Realized Potential Disparity for Lexicase", ylabel="Realized Potential Disparity across Median")
 
 # for panels in [0, 100000]:
 #     values = Racial_equity_projections["NEAT-Evaluation"]

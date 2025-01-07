@@ -159,16 +159,13 @@ def create_weighted_proj(combined_df, n=1000, objectives=['carbon_offset_metric_
     return create_greedy_projection(combined_df=new_df, n=n, sort_by='weighted_combo_metric', metric=metric)
 
 #NEAT projection
-def create_neat_projection(combined_df, state_df, n=1000, metric='carbon_offset_metric_tons_per_panel', model_path='Neat/models/NEAT_model.pkl', record=True):
+def create_neat_projection(combined_df, state_df, n=1000, metric='carbon_offset_metric_tons_per_panel', network=None, record=True):
     #run the trained NN from model path
     data_manager = DataManager(combined_df, state_df)
 
-    with open(model_path, 'rb') as f:
-        winner = pickle.load(f)
-
     zip_outputs = []
     for i in range(0, data_manager.num_zips):
-        score = winner.activate(data_manager.network_inputs(i, train=False))
+        score = network.activate(data_manager.network_inputs(i, train=False))
         zip_outputs.append((i, score))
 
     zip_outputs.sort(key=lambda z: z[1], reverse=True) #sort zip codes by highest score
@@ -262,7 +259,11 @@ def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon
                                                                                                    [picked['Carbon-Efficient'], picked['Energy-Efficient'], picked['Racial-Equity-Aware'], picked['Income-Equity-Aware']])
 
     print("Creating NEAT Projection")
-    proj['NEAT-Evaluation'], picked['NEAT-Evaluation'] = create_neat_projection(combined_df, state_df, n, metric=metric, model_path=model_path)
+
+    #load model
+    with open(model_path, 'rb') as f:
+        network = pickle.load(f)
+    proj['NEAT-Evaluation'], picked['NEAT-Evaluation'] = create_neat_projection(combined_df, state_df, n, metric=metric, network=network)
 
     # TESTING
     # print("Creating Random Projection")

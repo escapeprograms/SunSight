@@ -228,7 +228,7 @@ class DataManager:
 
         buckets, _ = self.greedy_projection_bucket(zip_order, 'black_prop', n, thresholds=self.racial_thresholds, train=train)
 
-        total_panels = sum(buckets)
+        total_panels = sum(buckets) #n + initial panels
         #get "error": squared relative difference from a uniform distribution (each bucket has total_panels/k)
         # errors = np.array([(bucket - total_panels/k)/(total_panels/k) for bucket in buckets])
         # return 1 - (np.sum(errors**2)/k) #take the negative sum of squared error, normalized to [0,1]

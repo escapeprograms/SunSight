@@ -14,14 +14,20 @@ from Neat.saving_util import *
 
 #constants
 NUM_PANELS = 1000000
-NUM_GENERATIONS = 3
+
+#bounds on randomized panels
+NUM_PANELS_LOWER = 100000
+NUM_PANELS_UPPER = 1000000
+
+POP_SIZE = 20
+NUM_GENERATIONS = 30
 EVALUATION_METRICS = ['carbon_offset','energy_generation','racial_equity','income_equity'] #lexicase metrics to evaluate
 METRIC_WEIGHTS = [1,1,1,1] #how much each metric should weight
 OVERALL_THRESHOLD = 0.3 #what fraction of TOTAL population reproduces, makes sure this matches 'survival_threshold' in neat-config
 
 TOURNAMENT_K = 16 #number of models selected per "tournament" (tournament selection only)
 
-step_threshold = OVERALL_THRESHOLD ** (1/sum(METRIC_WEIGHTS)) #calculate what fraction survives after each metric is applied sequentially
+STEP_THRESHOLD = OVERALL_THRESHOLD ** (1/sum(METRIC_WEIGHTS)) #calculate what fraction survives after each metric is applied sequentially
 best_scores = []
 
 #run a simulation
@@ -50,9 +56,9 @@ def run_network(net, data_manager, train=True, cross_val = False):
     return zip_order
 
 #score a simulation and record the cumulative score across all metrics
-def score_order(info, metric_ind):
+def score_order(info, metric_ind, n=NUM_PANELS):
     #info[1] is zip_order, info[2] is score
-    score = data_manager.score(info[1], EVALUATION_METRICS[metric_ind], NUM_PANELS, train=True)
+    score = data_manager.score(info[1], EVALUATION_METRICS[metric_ind], n, train=True)
     # print("metric:", eval_metric,"score:",score)
     info[2] += score * METRIC_WEIGHTS[metric_ind]
     return score
@@ -60,12 +66,17 @@ def score_order(info, metric_ind):
 #GENOME SELECTION
 #lexicase
 def eval_genomes_lexicase(genomes, config):
-    best_score = float('-inf') #record best score
+    global EVALUATION_METRICS
+    global OVERALL_THRESHOLD
+    global STEP_THRESHOLD
+    global NUM_PANELS
+
+    best_score = 0 #record best score
     
     #get zip orders for all genomes by running each NN once
     genome_info = [] #stores genome, zip_order, and cumulative score
     for genome_id, genome in tqdm(genomes):
-        genome.fitness = float('-inf') #set all fitness to a minimum initially
+        genome.fitness = 0 #set all fitness to a minimum initially
         
         net = neat.nn.FeedForwardNetwork.create(genome, config)
         zip_order = run_network(net, data_manager)
@@ -76,12 +87,14 @@ def eval_genomes_lexicase(genomes, config):
     for i in indices:
         eval_metric = EVALUATION_METRICS[i]
         metric_weight = METRIC_WEIGHTS[i]
+        num_panels = NUM_PANELS #np.random.randint(NUM_PANELS_LOWER, NUM_PANELS_UPPER) #pick a random number of panels to evaluate for each objective for each generation
+
         #score each genome's zip order based on eval_metric and sort the list by it
         # genome_info.sort(key = lambda info: data_manager.score(info[1], eval_metric, NUM_PANELS), reverse=True)
-        genome_info.sort(key = lambda info: score_order(info, i), reverse=True)
+        genome_info.sort(key = lambda info: score_order(info, i, num_panels), reverse=True)
         
         #naturally select the genome list by the step_threshold
-        cutoff = np.ceil((step_threshold**metric_weight * len(genome_info))).astype(int)
+        cutoff = np.ceil((STEP_THRESHOLD**metric_weight * len(genome_info))).astype(int)
         genome_info = genome_info[0:cutoff]
 
         #update ranking data for tiebreakers, a number closer to 0 is better (deprecated)
@@ -105,6 +118,11 @@ def eval_genomes_lexicase(genomes, config):
 
 #fitness proportion
 def eval_genomes_weighted_sum(genomes, config):
+    global EVALUATION_METRICS
+    global OVERALL_THRESHOLD
+    global STEP_THRESHOLD
+    global NUM_PANELS
+
     best_score = float('-inf') #record best score
     
     #get zip orders for all genomes by running each NN once
@@ -118,9 +136,11 @@ def eval_genomes_weighted_sum(genomes, config):
 
     #fitness prop: evaluate based on sum of all metrics (weighted)
     indices = np.arange(len(EVALUATION_METRICS))
+    num_panels = NUM_PANELS #np.random.randint(NUM_PANELS_LOWER, NUM_PANELS_UPPER) #pick a random number of panels to evaluate for each generation
+
     for i in indices:
         for j in range(len(genome_info)):
-            score_order(genome_info[j], i)
+            score_order(genome_info[j], i, num_panels)
         
     #set the fitnesses for all genomes
     for genome, zip_order, score in genome_info:
@@ -141,17 +161,38 @@ def eval_genomes_random(genomes, config):
         
 
 #do a single training run
-def run(config_file, selection_method, reproduction_method=neat.DefaultReproduction, checkpoint=0):
-    print(f"NUM_PANELS={NUM_PANELS}",
-          f"NUM_GENERATIONS={NUM_GENERATIONS}",
-          f"METRIC_WEIGHTS={METRIC_WEIGHTS}",
-          f"OVERALL_THRESHOLD={OVERALL_THRESHOLD}")
+def run(config_file, selection_method, reproduction_method=neat.DefaultReproduction, checkpoint=0, panels=NUM_PANELS, threshold=OVERALL_THRESHOLD, pop_size=POP_SIZE, generations=NUM_GENERATIONS):
+    global EVALUATION_METRICS
+    global OVERALL_THRESHOLD
+    global STEP_THRESHOLD
+    global NUM_PANELS
+    global METRIC_WEIGHTS
+    global POP_SIZE
+    global NUM_GENERATIONS
+
 
     print("loading configuration...")
     # Load configuration.
     config = neat.Config(neat.DefaultGenome, reproduction_method,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
+
+    #edit config and set global vars based on additional specifications
+    NUM_PANELS = panels
+
+    OVERALL_THRESHOLD = threshold #what fraction of TOTAL population reproduces, makes sure this matches 'survival_threshold' in neat-config
+    STEP_THRESHOLD = OVERALL_THRESHOLD ** (1/sum(METRIC_WEIGHTS))
+    config.reproduction_config.survival_threshold = threshold
+
+    POP_SIZE = pop_size
+    config.pop_size = pop_size
+
+    NUM_GENERATIONS = generations
+    #print global vars
+    print(f"NUM_PANELS=[{NUM_PANELS}]",
+          f"NUM_GENERATIONS={NUM_GENERATIONS}",
+          f"METRIC_WEIGHTS={METRIC_WEIGHTS}",
+          f"OVERALL_THRESHOLD={OVERALL_THRESHOLD}")
 
     # Create the population, which is the top-level object for a NEAT run.
     

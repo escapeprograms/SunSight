@@ -4,15 +4,15 @@
 fitness_criterion     = max
 fitness_threshold     = 0
 #try a small pop size for testing purposes  
-pop_size              = 100
+pop_size              = 30
 reset_on_extinction   = False
 no_fitness_termination = True
 
 [DefaultGenome]
 # node activation options
 activation_default      = sigmoid
-activation_mutate_rate  = 0.0
-activation_options      = sigmoid
+activation_mutate_rate  = 0.2
+activation_options      = sigmoid relu
 
 # node aggregation options
 aggregation_default     = sum
@@ -83,13 +83,13 @@ max_stagnation       = 20
 species_elitism      = 2
 
 [DefaultReproduction]
-elitism            = 0
+elitism            = 1
 survival_threshold = 0.3
 
 [FitnessPropReproduction]
-elitism            = 0
+elitism            = 1
 survival_threshold = 0.3
 
 [TournamentReproduction]
-elitism            = 0
+elitism            = 1
 survival_threshold = 0.3
