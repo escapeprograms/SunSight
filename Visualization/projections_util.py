@@ -286,6 +286,33 @@ def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon
 
     return proj, picked
 
+def create_projections_models(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, model_paths=["Neat/models/NEAT_model.pkl"], key_names = ["Neat"], save_label=None):
+    ## TODO remove rrtest (just for a new version of round robin)
+    label_suffix = ""
+    if save_label:
+        label_suffix = "_"+save_label
+
+    if load and exists("Clean_Data/projections_"+metric+label_suffix+".csv") and exists("Clean_Data/projections_picked"+label_suffix+".csv"):
+        return pd.read_csv("Clean_Data/projections_"+metric+label_suffix+".csv"), pd.read_csv("Clean_Data/projections_picked"+label_suffix+".csv")
+    
+    picked = pd.DataFrame()
+    proj = pd.DataFrame()
+    print("Creating Continued Projection")
+    proj['Status-Quo'] = create_continued_projection(combined_df, n, metric)
+
+    #load models
+    for model_path, key_name in zip(model_paths, key_names):
+        print(f"Creating {key_name} model projection from {model_path}")
+        with open(model_path, 'rb') as f:
+            network = pickle.load(f)
+        proj[key_name], picked[key_name] = create_neat_projection(combined_df, state_df, n, metric=metric, network=network)
+
+    if save:
+        proj.to_csv("Clean_Data/projections_"+metric+label_suffix+".csv",index=False)
+        picked.to_csv("Clean_Data/projections_picked"+label_suffix+".csv", index=False)
+
+    return proj, picked
+
 # Creates multiple different equity projections and returns them TODO
 def create_equity_projections(combined_df, picked, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, save_label=None):
     label_suffix = ""
@@ -298,40 +325,66 @@ def create_equity_projections(combined_df, picked, n=1000, load=False, metric='c
     proj = pd.DataFrame()
     print("Creating Continued Equity Projection")
     proj['Status-Quo'] = create_continued_equity_projection(combined_df, n, metric=metric)
-    print("Creating Greedy Carbon Offset Equity Projection")
-    proj['Carbon-Efficient'] = create_equity_projection_from_picked(combined_df, picked['Carbon-Efficient'], n, metric=metric)
-    print("Creating Greedy Average Sun Equity Projection")
-    proj['Energy-Efficient'] = create_equity_projection_from_picked(combined_df, picked['Energy-Efficient'], n, metric=metric)
-    print("Creating Greedy Black Proportion Equity Projection")
-    proj['Racial-Equity-Aware'] = create_equity_projection_from_picked(combined_df, picked['Racial-Equity-Aware'], n, metric=metric)
-    print("Creating Greedy Low Median Income Equity Projection")
-    proj['Income-Equity-Aware'] = create_equity_projection_from_picked(combined_df, picked['Income-Equity-Aware'], n, metric=metric)
 
-    print("Creating Round Robin Equity Projection")
-    proj['Round Robin'] = create_equity_projection_from_picked(combined_df, picked['Round Robin'], n, metric=metric)
+    #create a projection for every key in picked
+    keys = picked.columns.tolist()
+    for key in keys:
+        if key == 'Status-Quo': #skip status quo
+            continue
+        print(f"Creating {key} Equity Projection")
+        proj[key] = create_equity_projection_from_picked(combined_df, picked[key], n, metric=metric)
 
-    print("Creating NEAT Equity Projection")
-    proj['NEAT-Evaluation'] = create_equity_projection_from_picked(combined_df, picked['NEAT-Evaluation'], n, metric=metric)
-
-    # TESTING
-    # print("Creating Random Projection")
-    # proj['Random'] = create_random_proj(combined_df,n, metric)
-    # print("Creating Weighted Greedy Projection")
-    # proj['Weighted Greedy'], picked['Weighted Greedy'] = create_weighted_proj(combined_df, n, ['carbon_offset_metric_tons_per_panel', 'yearly_sunlight_kwh_kw_threshold_avg', 'black_prop'], [2,4,1], metric=metric)
-
-    # uniform_samples = 10
-
-    # print("Creating uniform random projection with", uniform_samples, "samples")
-
-    # proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] = np.zeros(n+1)
-    # for i in range(uniform_samples):
-    #     proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] += create_random_proj(combined_df, n)/uniform_samples
-    
-    ## TODO remove rrtest (just for a new version of round robin)
     if save:
         proj.to_csv("Clean_Data/equity_projections_"+metric+label_suffix+".csv",index=False)
 
     return proj
+
+
+# def create_equity_projections(combined_df, picked, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, save_label=None):
+#     label_suffix = ""
+#     if save_label:
+#         label_suffix = "_"+save_label
+        
+#     if load and exists("Clean_Data/equity_projections_"+metric+label_suffix+".csv"):
+#         return pd.read_csv("Clean_Data/equity_projections_"+metric+label_suffix+".csv")
+
+#     proj = pd.DataFrame()
+#     print("Creating Continued Equity Projection")
+#     proj['Status-Quo'] = create_continued_equity_projection(combined_df, n, metric=metric)
+#     print("Creating Greedy Carbon Offset Equity Projection")
+#     proj['Carbon-Efficient'] = create_equity_projection_from_picked(combined_df, picked['Carbon-Efficient'], n, metric=metric)
+#     print("Creating Greedy Average Sun Equity Projection")
+#     proj['Energy-Efficient'] = create_equity_projection_from_picked(combined_df, picked['Energy-Efficient'], n, metric=metric)
+#     print("Creating Greedy Black Proportion Equity Projection")
+#     proj['Racial-Equity-Aware'] = create_equity_projection_from_picked(combined_df, picked['Racial-Equity-Aware'], n, metric=metric)
+#     print("Creating Greedy Low Median Income Equity Projection")
+#     proj['Income-Equity-Aware'] = create_equity_projection_from_picked(combined_df, picked['Income-Equity-Aware'], n, metric=metric)
+
+#     print("Creating Round Robin Equity Projection")
+#     proj['Round Robin'] = create_equity_projection_from_picked(combined_df, picked['Round Robin'], n, metric=metric)
+
+#     print("Creating NEAT Equity Projection")
+#     proj['NEAT-Evaluation'] = create_equity_projection_from_picked(combined_df, picked['NEAT-Evaluation'], n, metric=metric)
+
+#     # TESTING
+#     # print("Creating Random Projection")
+#     # proj['Random'] = create_random_proj(combined_df,n, metric)
+#     # print("Creating Weighted Greedy Projection")
+#     # proj['Weighted Greedy'], picked['Weighted Greedy'] = create_weighted_proj(combined_df, n, ['carbon_offset_metric_tons_per_panel', 'yearly_sunlight_kwh_kw_threshold_avg', 'black_prop'], [2,4,1], metric=metric)
+
+#     # uniform_samples = 10
+
+#     # print("Creating uniform random projection with", uniform_samples, "samples")
+
+#     # proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] = np.zeros(n+1)
+#     # for i in range(uniform_samples):
+#     #     proj['Uniform Random (' + str(uniform_samples) + ' samples)' ] += create_random_proj(combined_df, n)/uniform_samples
+    
+#     ## TODO remove rrtest (just for a new version of round robin)
+#     if save:
+#         proj.to_csv("Clean_Data/equity_projections_"+metric+label_suffix+".csv",index=False)
+
+#     return proj
 
 # Searches over many different weight settings, with the first weight being set permenantly to 1 and the other two being set proportionally
 # Returns a 2d array of projections (i.e. 3d array)
