@@ -58,9 +58,9 @@ def create_continued_equity_projection(combined_df, n=1000, metric='Median_incom
     # Group by metric and sum SolarPanels
     buckets = combined_df.groupby(f'{metric}_bucket')['existing_installs_count'].sum().tolist()
 
-    equity_ratio = (buckets[1]-buckets[0])/total_panels #the equity doesn't change over time
+    disparity_ratio = (buckets[1]-buckets[0])/total_panels #the equity doesn't change over time
     # print(f"continued {metric} equity ratio:", equity_ratio)
-    x = np.arange(total_panels, total_panels + n+1) * equity_ratio
+    x = np.arange(total_panels, total_panels + n+1) * disparity_ratio
     # print("final diff:", x[-1])
     return x
 
@@ -257,6 +257,9 @@ def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon
                                                                                                    [proj['Carbon-Efficient'], proj['Energy-Efficient'], proj['Racial-Equity-Aware'], proj['Income-Equity-Aware']],
                                                                                                    picked_list=
                                                                                                    [picked['Carbon-Efficient'], picked['Energy-Efficient'], picked['Racial-Equity-Aware'], picked['Income-Equity-Aware']])
+    
+    print("Creating Weighted Greedy Projection")
+    proj['Weighted Greedy'], picked['Weighted Greedy'] = create_weighted_proj(combined_df, n, ['carbon_offset_metric_tons_per_panel', 'yearly_sunlight_kwh_kw_threshold_avg', 'black_prop', 'Median_income'], [0,0.8,0.8,0.8], metric=metric)
 
     print("Creating NEAT Projection")
 

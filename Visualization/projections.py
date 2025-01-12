@@ -4,37 +4,44 @@ from data_load_util import *
 from projections_util import *
 from tqdm import tqdm
 
-model_path = "Neat/models/01-09-25/NEAT_model2M_tournament.pkl"
+model_path = "Neat/models/01-12-25/NEAT_model2M_lexicase_weighted_2_2.25_1.5_1.pkl"
 load = True #set this to False if using a new model
-save_label = "NEAT_model2M_tournament" #get different projection saves
+save_label = "NEAT_model2M_lexicase_weighted_2_2.25_1.5_1" #get different projection saves
 
 combined_df = make_dataset(remove_outliers=True)
 state_df = load_state_data(combined_df, load="Clean_Data/data_by_state.csv")
 
 max_num_added = 1850000
+existing_count = combined_df['existing_installs_count'].sum()
 
 #projections for main NEAT model vs all other strategies
 Energy_projections, Energy_picked = create_projections(combined_df, state_df, n=max_num_added, load=load, metric='energy_generation_per_panel', model_path=model_path, save_label=save_label)
 Carbon_offset_projections, Carbon_offset_picked = create_projections(combined_df, state_df, n=max_num_added, load=load, metric='carbon_offset_kg_per_panel', model_path=model_path, save_label=save_label)
-Racial_equity_projections = 1-abs(create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=load, metric="black_prop", save_label=save_label)/max_num_added)
-Income_equity_projections = 1-abs(create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=load, metric="Median_income", save_label=save_label)/max_num_added)
+Racial_equity_projections = 1-abs(create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=load, metric="black_prop", save_label=save_label)/(max_num_added+existing_count))
+Income_equity_projections = 1-abs(create_equity_projections(combined_df, Energy_picked, n=max_num_added, load=load, metric="Median_income", save_label=save_label)/(max_num_added+existing_count))
 
 #projections for NEAT selection variations
-model_paths = ["Neat/models/01-09-25/NEAT_model2M_lexicase.pkl", "Neat/models/01-09-25/NEAT_model2M_tournament.pkl"]
-key_names = ["Lexicase","Tuned Tournament"] #corresponding key names to the model path
-NEAT_load = False #set this to False if using a new model
+model_paths = ["Neat/models/01-09-25/NEAT_model2M_lexicase.pkl","Neat/models/01-10-25/NEAT_model2M_lexicase.pkl", "Neat/models/01-09-25/NEAT_model2M_tournament.pkl"]
+key_names = ["Lexicase","Lexicase 2", "Tournament"] #corresponding key names to the model path
+NEAT_load = True #set this to False if using a new model
 NEAT_save_label = "leixcase_vs_tournament" #get different projection saves
 
 NEAT_Energy_projections, NEAT_Energy_picked = create_projections_models(combined_df, state_df, n=max_num_added, load=NEAT_load, metric='energy_generation_per_panel', model_paths=model_paths, key_names=key_names, save_label=NEAT_save_label)
 NEAT_Carbon_offset_projections, NEAT_Carbon_offset_picked = create_projections_models(combined_df, state_df, n=max_num_added, load=NEAT_load, metric='carbon_offset_kg_per_panel', model_paths=model_paths, key_names=key_names, save_label=NEAT_save_label)
-NEAT_Racial_equity_projections = 1-abs(create_equity_projections(combined_df, NEAT_Energy_picked, n=max_num_added, load=NEAT_load, metric="black_prop", save_label=NEAT_save_label)/max_num_added)
-NEAT_Income_equity_projections = 1-abs(create_equity_projections(combined_df, NEAT_Energy_picked, n=max_num_added, load=NEAT_load, metric="Median_income", save_label=NEAT_save_label)/max_num_added)
+NEAT_Racial_equity_projections = 1-abs(create_equity_projections(combined_df, NEAT_Energy_picked, n=max_num_added, load=NEAT_load, metric="black_prop", save_label=NEAT_save_label)/(max_num_added+existing_count))
+NEAT_Income_equity_projections = 1-abs(create_equity_projections(combined_df, NEAT_Energy_picked, n=max_num_added, load=NEAT_load, metric="Median_income", save_label=NEAT_save_label)/(max_num_added+existing_count))
 
-#add round robin to NEAT projection list from the other projection
-NEAT_Energy_projections['Round Robin'] = Energy_projections['Round Robin']
-NEAT_Carbon_offset_projections['Round Robin'] = Carbon_offset_projections['Round Robin']
-NEAT_Racial_equity_projections['Round Robin'] = Racial_equity_projections['Round Robin']
-NEAT_Income_equity_projections['Round Robin'] = Income_equity_projections['Round Robin']
+# #add round robin to NEAT projection list from the other projection
+# NEAT_Energy_projections['Round Robin'] = Energy_projections['Round Robin']
+# NEAT_Carbon_offset_projections['Round Robin'] = Carbon_offset_projections['Round Robin']
+# NEAT_Racial_equity_projections['Round Robin'] = Racial_equity_projections['Round Robin']
+# NEAT_Income_equity_projections['Round Robin'] = Income_equity_projections['Round Robin']
+
+# #add gridsearch to NEAT projection list
+# NEAT_Energy_projections['Weighted Greedy'] = Energy_projections['Weighted Greedy']
+# NEAT_Carbon_offset_projections['Weighted Greedy'] = Carbon_offset_projections['Weighted Greedy']
+# NEAT_Racial_equity_projections['Weighted Greedy'] = Racial_equity_projections['Weighted Greedy']
+# NEAT_Income_equity_projections['Weighted Greedy'] = Income_equity_projections['Weighted Greedy']
 
 print("projection calculations are done")
 
@@ -232,18 +239,6 @@ def plot_comparison_ratio(all_metric_projections, base_key, comparison_key, metr
     plt.tight_layout()
     plt.show()
 
-plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Evaluation", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
-
-# plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Carbon-Efficient", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
-
-# plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Energy-Efficient", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
-
-# plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Racial-Equity-Aware", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
-
-# plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Income-Equity-Aware", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
-
-# plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Round Robin", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
-
 def plot_comparison(all_metric_projections, base_key, comparison_key, metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 1, fontsize=30, fmts=["-X", "-H", "o-", "D-", "v-", "-8", "-p"], title="Comparison", ylabel="Value"):
     
     plt.style.use("seaborn")
@@ -284,7 +279,15 @@ def plot_comparison(all_metric_projections, base_key, comparison_key, metric_lab
 # plot_comparison([Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Evaluation", metric_labels = ['Racial Equity', 'Income Equity'], interval = 100000, title="Realized Potential Disparity for Lexicase", ylabel="Realized Potential Disparity across Median")
 
 
-def plot_bar_comparison_ratio(all_metric_projections, base_key, method_keys = ["NEAT_model"], method_names = ['Lexicase'], metric_labels = ['carbon_offset', 'energy_generation', 'racial_equity', 'income_equity']):
+def plot_bar_comparison_ratio(all_metric_projections, base_key, method_keys = ["NEAT_model"], method_names = ['Lexicase'], metric_labels = ['carbon_offset', 'energy_generation', 'racial_equity', 'income_equity'], fontsize=30):
+    
+    plt.style.use("seaborn")
+    font = {'family' : 'DejaVu Sans',
+    'weight' : 'bold',
+    'size'   : fontsize}
+
+    matplotlib.rc('font', **font)
+
     #get the last value for all objectives for all methods
     results = [] #ex: array of [lexicase results, tournament results etc.]
     for key in method_keys:
@@ -320,5 +323,10 @@ def plot_bar_comparison_ratio(all_metric_projections, base_key, method_keys = ["
     plt.show()
 
 
+#Neat vs Status Quo
+plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Evaluation", metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000)
+
+#Comparison Bar Chart
+all_key_names = ["Lexicase", "Lexicase 2", "Tournament","Weighted Greedy", "Round Robin"]
 plot_bar_comparison_ratio([NEAT_Carbon_offset_projections, NEAT_Energy_projections, NEAT_Racial_equity_projections, NEAT_Income_equity_projections],
-                          base_key="Status-Quo", method_keys=["Lexicase", "Tuned Lexicase", "Tournament", "Tuned Tournament","Round Robin"], method_names=["Lexicase", "Tuned Lexicase", "Tournament","Tuned Tournament","Round Robin"], metric_labels=['carbon_offset', 'energy_generation', 'racial_equity', 'income_equity'])
+                          base_key="Status-Quo", method_keys=all_key_names, method_names=all_key_names, metric_labels=['carbon_offset', 'energy_generation', 'racial_equity', 'income_equity'])

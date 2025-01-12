@@ -22,7 +22,7 @@ NUM_PANELS_UPPER = 1000000
 POP_SIZE = 20
 NUM_GENERATIONS = 30
 EVALUATION_METRICS = ['carbon_offset','energy_generation','racial_equity','income_equity'] #lexicase metrics to evaluate
-METRIC_WEIGHTS = [1,1,1,1] #how much each metric should weight
+METRIC_WEIGHTS = [2,2.25,1.5,1] #how much each metric should weight
 OVERALL_THRESHOLD = 0.3 #what fraction of TOTAL population reproduces, makes sure this matches 'survival_threshold' in neat-config
 
 TOURNAMENT_K = 16 #number of models selected per "tournament" (tournament selection only)
