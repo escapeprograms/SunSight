@@ -10,9 +10,9 @@ no_fitness_termination = True
 
 [DefaultGenome]
 # node activation options
-activation_default      = sigmoid
+activation_default      = relu
 activation_mutate_rate  = 0.2
-activation_options      = sigmoid relu
+activation_options      = relu
 
 # node aggregation options
 aggregation_default     = sum

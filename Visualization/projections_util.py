@@ -163,7 +163,7 @@ def create_neat_projection(combined_df, state_df, n=1000, metric='carbon_offset_
     #run the trained NN from model path
     data_manager = DataManager(combined_df, state_df)
 
-    zip_outputs = []
+    zip_outputs = [] #tuple pairs of zipcode index and score
     for i in range(0, data_manager.num_zips):
         score = network.activate(data_manager.network_inputs(i, train=False))
         zip_outputs.append((i, score))
@@ -207,7 +207,7 @@ def create_neat_projection(combined_df, state_df, n=1000, metric='carbon_offset_
             if record:
                 picked.append(combined_df['region_name'][greedy_index]) #record every panel location in order
     
-    return projection, picked
+    return projection, picked, zip_outputs
 
 
 # Creates a projection of the carbon offset if we place panels to normalize the panel utilization along the given "demographic"
@@ -230,7 +230,7 @@ def create_random_proj(combined_df, n=1000, metric='carbon_offset_metric_tons_pe
     return projection
 
 # Creates multiple different projections and returns them
-def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, model_path="Neat/models/NEAT_model.pkl", save_label=None):
+def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, save_label=None):
     ## TODO remove rrtest (just for a new version of round robin)
     label_suffix = ""
     if save_label:
@@ -259,14 +259,14 @@ def create_projections(combined_df, state_df, n=1000, load=False, metric='carbon
                                                                                                    [picked['Carbon-Efficient'], picked['Energy-Efficient'], picked['Racial-Equity-Aware'], picked['Income-Equity-Aware']])
     
     print("Creating Weighted Greedy Projection")
-    proj['Weighted Greedy'], picked['Weighted Greedy'] = create_weighted_proj(combined_df, n, ['carbon_offset_metric_tons_per_panel', 'yearly_sunlight_kwh_kw_threshold_avg', 'black_prop', 'Median_income'], [0,0.8,0.8,0.8], metric=metric)
+    proj['Linear Weighted'], picked['Linear Weighted'] = create_weighted_proj(combined_df, n, ['carbon_offset_metric_tons_per_panel', 'yearly_sunlight_kwh_kw_threshold_avg', 'black_prop', 'Median_income'], [0,0.8,0.8,0.8], metric=metric)
 
     print("Creating NEAT Projection")
 
-    #load model
-    with open(model_path, 'rb') as f:
-        network = pickle.load(f)
-    proj['NEAT-Evaluation'], picked['NEAT-Evaluation'] = create_neat_projection(combined_df, state_df, n, metric=metric, network=network)
+    #load model - NEAT projection moved to create_projection_models
+    # with open(model_path, 'rb') as f:
+    #     network = pickle.load(f)
+    # proj['NEAT-Evaluation'], picked['NEAT-Evaluation'] = create_neat_projection(combined_df, state_df, n, metric=metric, network=network)
 
     # TESTING
     # print("Creating Random Projection")
@@ -295,11 +295,16 @@ def create_projections_models(combined_df, state_df, n=1000, load=False, metric=
     if save_label:
         label_suffix = "_"+save_label
 
-    if load and exists("Clean_Data/projections_"+metric+label_suffix+".csv") and exists("Clean_Data/projections_picked"+label_suffix+".csv"):
-        return pd.read_csv("Clean_Data/projections_"+metric+label_suffix+".csv"), pd.read_csv("Clean_Data/projections_picked"+label_suffix+".csv")
+    if load and exists("Clean_Data/projections_"+metric+label_suffix+".csv") and exists("Clean_Data/projections_picked"+label_suffix+".csv") and exists("Clean_Data/projections_zip_outputs"+label_suffix+".csv"):
+        #turn all values into the proper tuples
+        zip_outputs = pd.read_csv("Clean_Data/projections_zip_outputs"+label_suffix+".csv", converters=
+                                  {col: eval for col in range(len(pd.read_csv("Clean_Data/projections_zip_outputs"+label_suffix+".csv", nrows=0).columns))})
+
+        return pd.read_csv("Clean_Data/projections_"+metric+label_suffix+".csv"), pd.read_csv("Clean_Data/projections_picked"+label_suffix+".csv"), zip_outputs
     
     picked = pd.DataFrame()
     proj = pd.DataFrame()
+    zip_outputs = pd.DataFrame()
     print("Creating Continued Projection")
     proj['Status-Quo'] = create_continued_projection(combined_df, n, metric)
 
@@ -308,13 +313,14 @@ def create_projections_models(combined_df, state_df, n=1000, load=False, metric=
         print(f"Creating {key_name} model projection from {model_path}")
         with open(model_path, 'rb') as f:
             network = pickle.load(f)
-        proj[key_name], picked[key_name] = create_neat_projection(combined_df, state_df, n, metric=metric, network=network)
+        proj[key_name], picked[key_name], zip_outputs[key_name] = create_neat_projection(combined_df, state_df, n, metric=metric, network=network)
 
     if save:
         proj.to_csv("Clean_Data/projections_"+metric+label_suffix+".csv",index=False)
         picked.to_csv("Clean_Data/projections_picked"+label_suffix+".csv", index=False)
+        zip_outputs.to_csv("Clean_Data/projections_zip_outputs"+label_suffix+".csv", index=False)
 
-    return proj, picked
+    return proj, picked, zip_outputs
 
 # Creates multiple different equity projections and returns them TODO
 def create_equity_projections(combined_df, picked, n=1000, load=False, metric='carbon_offset_metric_tons_per_panel', save=True, save_label=None):
