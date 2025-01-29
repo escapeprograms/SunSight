@@ -51,15 +51,16 @@ print("projection calculations are done")
 
 panel_estimations_by_year = [("Net-Zero" , 479000 * 3), ("  2030  ", 479000 * 1), ("  2034  ", 479000 * 2)]
 
-def plot_projections(projections, panel_estimations=None, net_zero_horizontal=False, interval=1, fontsize=30, fmts=["-X", "-H", "o-", "D-", "v-", "-8", "-p"], upper_bound='Greedy Carbon Offset', ylabel=None):
+def plot_projections(projections, panel_estimations=None, net_zero_horizontal=False, interval=1, fontsize=30, fmts=["--X", "-H", "o-", "D-", "v-", "-8", "-p"], upper_bound='Greedy Carbon Offset', ylabel=None):
 
-    plt.style.use("seaborn")
+    plt.style.use("default")
+    # plt.style.use("seaborn")
     font = {'family' : 'DejaVu Sans',
     'weight' : 'bold',
     'size'   : fontsize}
 
     matplotlib.rc('font', **font)
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(10, 7))
 
     if net_zero_horizontal:
         two_mill_continued = np.array(projections['Status-Quo'])[479000 * 3]
@@ -71,20 +72,21 @@ def plot_projections(projections, panel_estimations=None, net_zero_horizontal=Fa
     if panel_estimations is not None:
         for label, value in panel_estimations:
             plt.vlines(value/1e6, np.array(projections[upper_bound])[-1]/18, np.array(projections[upper_bound])[-1], colors='darkgray' , linestyles='dashed', linewidth=2, alpha=0.7)
-            plt.text((value - len(projections[upper_bound])/23)/1e6, np.array(projections[upper_bound])[-1]/80, label, alpha=0.7, fontsize=25)
+            #plt.text((value - len(projections[upper_bound])/23)/1e6, np.array(projections[upper_bound])[-1]/80, label, alpha=0.7, fontsize=25)
 
     if net_zero_horizontal:
         plt.hlines(two_mill_continued, 0, len(projections[upper_bound])/1e6, colors='black' , linestyles='dashed', linewidth=2, alpha=0.5)
-        plt.text(0, two_mill_continued*0.85, "Continued trend at\nNet-zero prediction", alpha=0.95, fontsize=18, color='black')
+        # plt.text(0, two_mill_continued*0.85, "Continued trend at\nNet-zero prediction", alpha=0.95, fontsize=18, color='black')
 
     for key,fmt in zip(keys,fmts):
-        plt.plot(x/1e6, np.array(projections[key])[0::interval], fmt, label=key, linewidth=3, markersize=8, alpha=0.9)
+        plt.plot(x/1e6, np.array(projections[key])[0::interval], fmt, label=key, linewidth=3, markersize=10, alpha=0.9)
 
 
     plt.locator_params(axis='x', nbins=8) 
     plt.locator_params(axis='y', nbins=8) 
-    plt.yticks(fontsize=fontsize/(2))
-    plt.xticks(fontsize=fontsize/(2))
+    ax.yaxis.get_offset_text().set_fontsize(fontsize/2)
+    plt.yticks(fontsize=fontsize/(1.6))
+    plt.xticks(fontsize=fontsize/(1.6))
 
     # print("percent difference between continued and Carbon-efficient:", projections['Round Robin'].values[-1] / projections['Carbon-Efficient'].values[-1] )
     # print("percent difference between continued and racially-aware:", projections['Racial-Equity-Aware'].values[-1] / projections['Status-Quo'].values[-1])
@@ -99,9 +101,9 @@ def plot_projections(projections, panel_estimations=None, net_zero_horizontal=Fa
 
     
 
-    plt.xlabel("Additional Panels Built (Millions)", fontsize=fontsize, labelpad=20)
-    plt.ylabel(ylabel, fontsize=fontsize, labelpad=20)
-    plt.legend(fontsize=fontsize/1.7)
+    plt.xlabel("Additional Panels Built (Millions)", fontsize=fontsize/1.1, labelpad=20)
+    plt.ylabel(ylabel, fontsize=fontsize/1.15, labelpad=20)
+    plt.legend(fontsize=fontsize/1.9)
     # plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),
     #       ncol=1, shadow=True, fontsize=fontsize/1.7)
     plt.tight_layout()
@@ -212,146 +214,9 @@ def weighted_proj_heatmap(combined_df, metric='carbon_offset_kg_per_panel', obje
 # plot_demo_state_stats(round_robin_df, save="Projection_Data/data_by_state_proj_greedy_round_robink.csv")
 # plot_demo_state_stats(energy_df, save="Projection_Data/data_by_state_proj_greedy_weighted.csv")
 
-
-def dominates(sol1, sol2):
-    """Check if sol1 dominates sol2."""
-    return all(s1 >= s2 for s1, s2 in zip(sol1, sol2)) and any(s1 > s2 for s1, s2 in zip(sol1, sol2))
-
-
-# def grid_search(combined_df, npanels, metrics, objectives, save = None, load = None):
-#     """Perform grid search to find Pareto-optimal solutions."""
-#     weight_starts = [0.0, 0.0, 0.0, 0.0]
-#     weight_ends = [2.0, 2.0, 2.0, 2.0]
-#     number_of_samples = 10
-#     filename = "/Users/mimilertsaroj/Desktop/SunSight/Visualization/Projection_Data/GS" + str(number_of_samples)
-#     results = {}
-
-#     for i, weight1 in enumerate(np.arange(weight_starts[0], weight_ends[0], (weight_ends[0] - weight_starts[0]) / number_of_samples)):
-#         for j, weight2 in enumerate(np.arange(weight_starts[1], weight_ends[1], (weight_ends[1] - weight_starts[1]) / number_of_samples)):
-#             for k, weight3 in enumerate(np.arange(weight_starts[2], weight_ends[2], (weight_ends[2] - weight_starts[2]) / number_of_samples)):
-#                 for l, weight4 in enumerate(np.arange(weight_starts[3], weight_ends[3], (weight_ends[3] - weight_starts[3]) / number_of_samples)):
-
-#                     key = ' '.join(str(x) for x in [weight1,weight2,weight3,weight4])
-#                     results[key] = []
-
-#     for metric in metrics:
-#         print("current metric is" + metric)
-#         for weights, projectvalue in results.items():
-#             print("creating projection array for weights "+ weights)
-#             weightarr = list(map(float, weights.split(" ")))
-#             projection,picked = create_weighted_proj(combined_df, n=npanels, objectives=objectives, weights=weightarr, metric=metric)
-#             if metric == 'black_prop' or metric == 'Median_income':
-#                 new_picks_df = df_with_updated_picks(combined_df, picked)
-#                 # print(new_picks_df)
-#                 key = "panel_utilization"
-#                 if metric == 'black_prop':
-#                     demo = 'black_prop'
-#                 else:
-#                     demo = 'Median_income'
-#                 median = np.median(new_picks_df[demo].values)
-#                 low_avg = np.mean(new_picks_df[new_picks_df[demo] < median][key].values)
-#                 high_avg = np.mean(new_picks_df[new_picks_df[demo] >= median][key].values)
-#                 equity_score = np.abs(1-np.abs(high_avg-low_avg))
-#                 projectvalue.append(equity_score)
-#                 continue
-#             if metric == 'carbon_offset_kg_per_panel':
-#                 projectvalue.append(projection[-1]/Carbon_offset_projections['Status-Quo'].values[-1])
-#                 continue
-#             if metric == 'energy_generation_per_panel':
-#                 projectvalue.append(projection[-1]/Energy_projections['Status-Quo'].values[-1])
-#                 continue
-#     data = []
-#     for key, values in results.items():
-#         weights = list(map(float, key.split()))
-#         row = weights + values
-#         data.append(row)
+def plot_comparison_ratio(all_metric_projections, base_key, comparison_key, metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 1, fontsize=30, fmts=["-X", "-H", "o-", "D-", "v-", "--8", "-p"], title="Performance of NEAT", colors=["#56b3e9","#009e74","#cc79a7","#d55e00"]):
     
-#     columns = ['w1', 'w2', 'w3', 'w4', 'CO (prop to SQ)', 'Energy gen (prop to SQ)', 'Income_EQ', 'racial_EQ']
-    
-#     df = pd.DataFrame(data, columns=columns)
-    
-#     # Save the DataFrame to CSV
-#     df.to_csv(filename, index=False)
-
-#     return df
-def grid_search(combined_df, npanels, metrics, objectives, save=None, load=None):
-    """Perform grid search to find Pareto-optimal solutions."""
-    weight_starts = [0.0, 0.0, 0.0, 0.0]
-    weight_ends = [2.0, 2.0, 2.0, 2.0]
-    number_of_samples = 12
-    filename = "/Users/mimilertsaroj/Desktop/SunSight/Visualization/Projection_Data/GS" + str(number_of_samples)
-    
-    # Precompute grid of weights
-    weight_values = np.linspace(weight_starts[0], weight_ends[0], number_of_samples)
-    weight_grid = np.array(np.meshgrid(weight_values, weight_values, weight_values, weight_values)).T.reshape(-1, 4)
-
-    results = {tuple(weights): [] for weights in weight_grid}
-
-    # Preload projections
-    co_baseline = Carbon_offset_projections['Status-Quo'].values[-1]
-    energy_baseline = Energy_projections['Status-Quo'].values[-1]
-
-    def process_metric(metric):
-        """Process a single metric."""
-        local_results = {}
-        for weights in weight_grid:
-            weights_tuple = tuple(weights)
-            projection, picked = create_weighted_proj(combined_df, n=npanels, objectives=objectives, weights=weights, metric=metric)
-            if metric in ['black_prop', 'Median_income']:
-                new_picks_df = df_with_updated_picks(combined_df, picked)
-                key = "panel_utilization"
-                demo = 'black_prop' if metric == 'black_prop' else 'Median_income'
-                median = np.median(new_picks_df[demo].values)
-                low_avg = np.mean(new_picks_df[new_picks_df[demo] < median][key].values)
-                high_avg = np.mean(new_picks_df[new_picks_df[demo] >= median][key].values)
-                equity_score = np.abs(1 - np.abs(high_avg - low_avg))
-                local_results[weights_tuple] = equity_score
-            elif metric == 'carbon_offset_kg_per_panel':
-                local_results[weights_tuple] = projection[-1] / co_baseline
-            elif metric == 'energy_generation_per_panel':
-                local_results[weights_tuple] = projection[-1] / energy_baseline
-        return metric, local_results
-
-    # Parallelise metric computation
-    metrics_results = Parallel(n_jobs=-1)(delayed(process_metric)(metric) for metric in metrics)
-
-    # Combine results
-    for metric, metric_results in metrics_results:
-        for weights_tuple, value in metric_results.items():
-            results[weights_tuple].append(value)
-
-    # Create DataFrame
-    data = [list(weights) + values for weights, values in results.items()]
-    columns = ['w1', 'w2', 'w3', 'w4', 'CO (prop to SQ)', 'Energy gen (prop to SQ)', 'Income_EQ', 'racial_EQ']
-    df = pd.DataFrame(data, columns=columns)
-    df.to_csv(filename, index=False)
-
-    return df
-def pareto_calc(df):  
-    pareto_opt_solutions = []
-    filename = "/Users/mimilertsaroj/Desktop/SunSight/Visualization/Projection_Data/GSParetoOptSoln12"
-    for index, row in df.iterrows():
-        add = True
-        for i, optsoln in enumerate(pareto_opt_solutions):
-            if dominates(row[4:],optsoln[4:]):
-                del(pareto_opt_solutions[i])
-            if dominates(optsoln, row): 
-                add = False
-                break
-        if add == True:
-            pareto_opt_solutions.append(row)
-        # print(pareto_opt_solutions)
-    columns = ['w1', 'w2', 'w3', 'w4', 'CO (prop to SQ)', 'Energy gen (prop to SQ)', 'Income_EQ', 'racial_EQ']
-    new_df = pd.DataFrame(pareto_opt_solutions, columns=columns)
-    new_df.to_csv(filename, index=False)
-    return df
-
-
-#TODO make compariosn_keys plural so we can plot multiple 
-
-def plot_comparison_ratio(all_metric_projections, base_key, comparison_key, metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 1, fontsize=30, fmts=["-X", "-H", "o-", "D-", "v-", "-8", "-p"], title="Performance of NEAT"):
-    
-    plt.style.use("seaborn")
+    plt.style.use("seaborn-v0_8-whitegrid")
     font = {'family' : 'DejaVu Sans',
     'weight' : 'bold',
     'size'   : fontsize}
@@ -376,8 +241,8 @@ def plot_comparison_ratio(all_metric_projections, base_key, comparison_key, metr
     #plot ratios
     x = np.arange((len(ratios[metric_labels[0]]) // interval) + 1) * interval/1000000 #scale down by 10e6
 
-    for metric, fmt in zip(metric_labels, fmts):
-        plt.plot(x, np.array(ratios[metric])[0::interval], fmt, label=metric, linewidth=3, markersize=8, alpha=0.9)
+    for metric, fmt, color in zip(metric_labels, fmts, colors):
+        plt.plot(x, np.array(ratios[metric])[0::interval], fmt, label=metric, linewidth=3, markersize=8, alpha=0.9, color=color)
 
     #plot code upper bounds
     # plt.plot(x, np.array(ratios['co max'])[0::interval], "--X", color="tab:blue", label='Maximum Possible Carbon Offset', linewidth=3, markersize=8, alpha=0.9)
@@ -387,10 +252,10 @@ def plot_comparison_ratio(all_metric_projections, base_key, comparison_key, metr
     plt.hlines(1, 0, x[-1], colors='black' , linestyles='dashed', linewidth=2, alpha=0.5)
 
     # plt.ylim(0, 2) #set the range of the plots
-    ax.tick_params(axis='both', labelsize=fontsize/2)
-    plt.xlabel("Additional Panels Built (millions)", fontsize=fontsize, labelpad=20)
-    plt.ylabel(f"Ratio to {base_key}", fontsize=fontsize, labelpad=20)
-    plt.legend(fontsize=fontsize/1.7)
+    ax.tick_params(axis='both', labelsize=fontsize/1.6)
+    plt.xlabel("Additional Panels Built (millions)", fontsize=fontsize/1.15, labelpad=20)
+    plt.ylabel(f"Ratio to {base_key}", fontsize=fontsize/1.15, labelpad=20)
+    plt.legend(fontsize=fontsize/1.9)
     # plt.title(title, fontsize=fontsize/1.2)
     # plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),
     #       ncol=1, shadow=True, fontsize=fontsize/1.4)
@@ -440,14 +305,14 @@ def plot_comparison(all_metric_projections, base_key, comparison_key, metric_lab
 # plot_comparison([Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Evaluation", metric_labels = ['Racial Equity', 'Income Equity'], interval = 100000, title="Realized Potential Disparity for Lexicase", ylabel="Realized Potential Disparity across Median")
 
 
-def plot_bar_comparison_ratio(all_metric_projections, base_key, method_keys = ["NEAT_model"], method_names = ['Lexicase'], metric_labels = ['carbon_offset', 'energy_generation', 'racial_equity', 'income_equity'], fontsize=30):
-    
-    plt.style.use("seaborn")
+def plot_bar_comparison_ratio(all_metric_projections, base_key, method_keys = ["NEAT_model"], method_names = ['Lexicase'], metric_labels = ['carbon_offset', 'energy_generation', 'racial_equity', 'income_equity'], fontsize=30, hatches=["\\","/","|","-"], hatch_size=0.3, colors=["#455054","#308695","#D45769","#E69D45"]):
+    plt.style.use("default")
     font = {'family' : 'DejaVu Sans',
     'weight' : 'bold',
     'size'   : fontsize}
 
     matplotlib.rc('font', **font)
+    plt.rcParams['hatch.linewidth'] = hatch_size
 
     #get the last value for all objectives for all methods
     results = [] #ex: array of [lexicase results, tournament results etc.]
@@ -459,21 +324,21 @@ def plot_bar_comparison_ratio(all_metric_projections, base_key, method_keys = ["
 
     # Configuration for the bar graph
     x = np.arange(len(metric_labels))  # X positions for the groups
-    width = 0.17  # Width of each bar
+    width = 0.2  # Width of each bar
 
     # Create the plot
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Add bars for each method
     for i, method in enumerate(method_names):
-        ax.bar(x + i * width, results[i], width, label=method)
+        ax.bar(x + i * width, results[i], width, label=method, hatch=hatches[i], color=colors[i])
     
     #show baseline
     plt.axhline(y=1, color='black', linestyle='--', linewidth=2) 
 
-    # Add labels, title, and legend
-    ax.set_xlabel('Objectives', fontsize=fontsize, labelpad=20)
-    ax.set_ylabel(f'Ratio to {base_key}', fontsize=fontsize, labelpad=20)
+    # # Add labels, title, and legend
+    # ax.set_xlabel('Objectives', fontsize=fontsize, labelpad=20)
+    ax.set_ylabel(f'Ratio to {base_key}', fontsize=fontsize/1.15, labelpad=20)
     # ax.set_title('Fitness of Selection Methods for all Objectives', fontsize=fontsize/1.2)
     
     ax.tick_params(axis='both', labelsize=fontsize/2)
@@ -481,6 +346,10 @@ def plot_bar_comparison_ratio(all_metric_projections, base_key, method_keys = ["
     ax.set_xticklabels(metric_labels, fontsize=fontsize/2.2)
     ax.legend(fontsize=fontsize/2, loc="upper center", bbox_to_anchor=(0.4, 1)) #hardcoded legend placement
 
+    #move y-axis to make room for legend
+    ymin, ymax = plt.ylim()
+
+    plt.ylim(ymin, ymax*1.2)
     # Show the plot
     plt.tight_layout()
     plt.show()
@@ -496,16 +365,17 @@ def scored_geo_plot(combined_df, zip_outputs, title):
 
 #Strategy X vs Status Quo
 #unweighted
-plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Lexicase (unweighted)",
-                      metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000, title="Performance of Unweighted NEAT-Lexicase")
+# plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Lexicase (unweighted)",
+#                       metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000, title="Performance of Unweighted NEAT-Lexicase")
 
-# # weighted lexicase selection
-# plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Lexicase",
-#                       metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000, title="Performance of Weighted NEAT-Lexicase")
 
-# # tournmaent selection
-# plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Tournament",
-#                       metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000, title="Performance of NEAT-Tournament")
+# weighted lexicase selection (used)
+plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Lexicase",
+                      metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000, title="Performance of Weighted NEAT-Lexicase")
+
+# tournmaent selection
+plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "NEAT-Tournament",
+                      metric_labels = ['Carbon Offset', 'Energy Generation', 'Racial Equity', 'Income Equity'], interval = 100000, title="Performance of NEAT-Tournament")
 
 # #Linear Weighted
 # plot_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial_equity_projections, Income_equity_projections], "Status-Quo", "Linear Weighted",
@@ -526,13 +396,21 @@ plot_bar_comparison_ratio([Carbon_offset_projections, Energy_projections, Racial
 
 # #Geo plots for different methods
 # print(NEAT_zip_outputs['NEAT-Tournament'].head(100))
-scored_geo_plot(combined_df, NEAT_zip_outputs['NEAT-Lexicase'], "NEAT-Lexicase")
+# scored_geo_plot(combined_df, NEAT_zip_outputs['NEAT-Lexicase'], "NEAT-Lexicase")
 # scored_geo_plot(combined_df, NEAT_zip_outputs['NEAT-Tournament'], "NEAT-Tournament")
 # scored_geo_plot(combined_df, NEAT_zip_outputs['LINEAR SCORES???'], "LINARUUU")
 
 #Projections
-Carbon_offset_projections_plot = Carbon_offset_projections[["Status-Quo","NEAT-Lexicase", "NEAT-Tournament","Linear Weighted", "Round Robin", "Carbon-Efficient"]]
-plot_projections(Carbon_offset_projections_plot, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon-Efficient', ylabel="Carbon Offset (kg)")
 
-Energy_projections_plot = Energy_projections[["Status-Quo","NEAT-Lexicase", "NEAT-Tournament","Linear Weighted", "Round Robin", "Energy-Efficient"]]
-plot_projections(Energy_projections_plot, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Energy-Efficient', ylabel="Additional Energy Capacity (kWh)")
+#Ver A (used)
+Carbon_offset_projections["Carbon Upper Bound"] = Carbon_offset_projections["Carbon-Efficient"]
+Carbon_offset_projections_plot = Carbon_offset_projections[["Status-Quo","NEAT-Lexicase", "NEAT-Tournament","Linear Weighted", "Round Robin", "Carbon Upper Bound"]]
+plot_projections(Carbon_offset_projections_plot, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon Upper Bound', ylabel="Carbon Offset (kg)", fmts=["-X", "-H", "o-", "D-", "v-", ":8", "-p"])
+
+#Ver B (not used)
+#Carbon_offset_projections_plot = Carbon_offset_projections[["Carbon Upper Bound", "NEAT-Tournament", "NEAT-Lexicase","Linear Weighted", "Round Robin", "Status-Quo"]]
+#plot_projections(Carbon_offset_projections_plot, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Carbon Upper Bound', ylabel="Carbon Offset (kg)", fmts=["--X", "-H", "o-", "D-", "v-", "-8", "-p"])
+
+Energy_projections["Energy Upper Bound"] = Energy_projections["Energy-Efficient"]
+Energy_projections_plot = Energy_projections[["Status-Quo","NEAT-Lexicase", "NEAT-Tournament","Linear Weighted", "Round Robin", "Energy Upper Bound"]]
+plot_projections(Energy_projections_plot, panel_estimations_by_year, net_zero_horizontal=True, interval=100000, upper_bound='Energy Upper Bound', ylabel="Energy Generation (kWh)", fmts=["-X", "-H", "o-", "D-", "v-", ":8", "-p"])
